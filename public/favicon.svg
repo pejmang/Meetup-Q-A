@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Q bubble (navy, tail bottom-left) -->
+  <path d="M9 2h30a7 7 0 0 1 7 7v19a7 7 0 0 1-7 7H19l-9 8v-8.2A7 7 0 0 1 2 28V9a7 7 0 0 1 7-7z" fill="#0b2a5b"/>
+  <text x="17" y="24.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="21" fill="#c8a24a">Q</text>
+  <!-- A bubble (gold, tail bottom-right) -->
+  <path d="M30 28h25a7 7 0 0 1 7 7v15a7 7 0 0 1-6 6.9V63l-8-6H30a7 7 0 0 1-7-7V35a7 7 0 0 1 7-7z" fill="#c8a24a" stroke="#fff" stroke-width="2.5"/>
+  <text x="42.5" y="50.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="21" fill="#0b2a5b">A</text>
+</svg>

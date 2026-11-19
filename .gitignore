@@ -1,0 +1,7 @@
+.env
+data.json
+backups/
+*.bak
+*.fr.bak/
+public.fr.bak/
+node_modules/
