@@ -1,0 +1,16 @@
+# /etc/systemd/system/meetup-qa.service  (deployment without Docker)
+[Unit]
+Description=Meetup Q&A
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/meetup-qa
+Environment=NODE_ENV=production PORT=3000 DATA_DIR=/var/lib/meetup-qa
+Environment=ADMIN_PASSWORD=change-me
+ExecStart=/usr/bin/node server.js
+Restart=always
+User=www-data
+StateDirectory=meetup-qa
+
+[Install]
+WantedBy=multi-user.target
