@@ -77,7 +77,7 @@ let stream = null;
 const appPath = () => location.pathname.startsWith(BASE) ? location.pathname.slice(BASE.length) || '/' : location.pathname;
 function route() {
   if (stream) { stream.close(); stream = null; }
-  document.body.classList.remove('screen', 'report');
+  document.body.classList.remove('screen', 'report', 'host-mode', 'admin-mode');
   const p = appPath().split('/').filter(Boolean);
   if (p[0] === 'e' && p[1]) {
     const code = p[1].toUpperCase();
@@ -187,7 +187,8 @@ function home() {
           go(`/e/${r.code}/host`);
         } }, l === 'en' ? '🇬🇧 English' : '🇫🇷 Français'))));
 
-    $app.replaceChildren(h('div', { class: 'wrap narrow' }, top,
+    document.body.classList.toggle('admin-mode', st.admin);
+    $app.replaceChildren(st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin')), h('div', { class: 'wrap narrow' }, top,
       h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline'))),
       login, create,
       h('h2', {}, t('home.live', { n: liveEv.length })),
@@ -395,6 +396,7 @@ function live(code, mode) {
     poll: { type: 'choice', question: '', options: ['', ''], hidden: false }, drafts: {}, view: qs.get('view') === 'polls' ? 'polls' : 'questions',
   };
   if (mode === 'screen') document.body.classList.add('screen');
+  if (isHost) document.body.classList.add('host-mode');
 
   stream = new EventSource(`${BASE}/api/events/${code}/stream?cid=${cid}${hostParam}`);
   stream.onmessage = e => {
@@ -646,7 +648,7 @@ function live(code, mode) {
     if (needle) list = list.filter(q => q.text.toLowerCase().includes(needle) || (q.author || '').toLowerCase().includes(needle) || q.merged.some(m => m.text.toLowerCase().includes(needle)));
 
     const stat = (n, label) => h('div', { class: 'stat' }, h('b', {}, n), h('span', {}, label));
-    const header = h('header', { class: 'topbar' }, h('div', { class: 'topbar-in' },
+    const header = h('header', { class: 'topbar' }, isHost && h('div', { class: 'mode-banner' }, '🎛 ' + t('mode.host')), h('div', { class: 'topbar-in' },
       h('div', { class: 'title' }, h('span', { class: `role ${isHost ? 'admin' : ''}` }, isHost ? t('role.host') : t('role.participant')), h('h1', {}, d.title), d.demo && h('span', { class: 'tag demo' }, t('demo.badge'))),
       h('div', { class: 'meta' }, h('span', { class: 'online', title: t('stats.online') }, '● ' + d.online), h('span', { class: 'code' }, d.code), langBtn())));
 
