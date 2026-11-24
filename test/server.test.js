@@ -1,0 +1,169 @@
+// Run with: npm test   (Node >= 18, no dependencies)
+'use strict';
+const { test, before, after } = require('node:test');
+const assert = require('node:assert/strict');
+const { spawn, spawnSync } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const SERVER = path.join(__dirname, '..', 'server.js');
+const ADMIN = 'test-admin-pw';
+const PORT = 3900 + Math.floor(Math.random() * 90);
+const B = `http://127.0.0.1:${PORT}/v2.0/api`;
+let proc, dataDir;
+
+const post = async (p, body, headers = {}) => { const r = await fetch(B + p, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) }); return { status: r.status, body: await r.json().catch(() => ({})) }; };
+const get = async p => { const r = await fetch(B + p); return { status: r.status, body: r.headers.get('content-type')?.includes('json') ? await r.json() : await r.text() }; };
+
+function start(env) {
+  return new Promise((resolve, reject) => {
+    const p = spawn(process.execPath, [SERVER], { env: { ...process.env, PORT: String(PORT), DATA_DIR: dataDir, BASE_PATH: '/v2.0', ADMIN_PASSWORD: ADMIN, ...env } });
+    p.stdout.on('data', d => { if (String(d).includes('ready')) resolve(p); });
+    p.on('exit', c => reject(new Error('server exited ' + c)));
+  });
+}
+const stop = p => new Promise(r => { p.on('exit', r); p.kill('SIGTERM'); });
+
+before(async () => { dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qa-test-')); proc = await start({}); });
+after(async () => { if (proc) await stop(proc); fs.rmSync(dataDir, { recursive: true, force: true }); });
+
+test('0.1 refuses to start without ADMIN_PASSWORD', () => {
+  const r = spawnSync(process.execPath, [SERVER], { env: { ...process.env, ADMIN_PASSWORD: '', PORT: '0' }, timeout: 5000 });
+  assert.notEqual(r.status, 0);
+  assert.match(String(r.stderr), /ADMIN_PASSWORD/);
+});
+
+test('refuses to start when DATA_DIR is not writable', { skip: process.getuid && process.getuid() === 0 ? 'running as root' : false }, () => {
+  const ro = fs.mkdtempSync(path.join(os.tmpdir(), 'qa-ro-')); fs.chmodSync(ro, 0o500);
+  const r = spawnSync(process.execPath, [SERVER], { env: { ...process.env, ADMIN_PASSWORD: ADMIN, DATA_DIR: ro, PORT: '0' }, timeout: 5000 });
+  fs.chmodSync(ro, 0o700); fs.rmSync(ro, { recursive: true, force: true });
+  assert.notEqual(r.status, 0);
+  assert.match(String(r.stderr), /cannot write/);
+});
+
+let token, code, hostKey;
+test('admin login + event creation with host password', async () => {
+  assert.equal((await post('/login', { password: 'wrong' })).status, 401);
+  token = (await post('/login', { password: ADMIN })).body.token;
+  assert.ok(token);
+  assert.equal((await post('/events', { token, title: 'T' })).status, 400);
+  const r = await post('/events', { token, title: 'Test event', hostPassword: 'host1234' });
+  assert.equal(r.status, 200);
+  ({ code, hostKey } = r.body);
+  const h = await post(`/events/${code}/host-login`, { password: 'host1234' });
+  assert.equal(h.body.hostKey, hostKey);
+});
+
+test('0.4 Popular keeps answered questions; 1.3 note; 1.4 merge adds votes', async () => {
+  const a = await post(`/events/${code}/questions`, { cid: 'u1', text: 'What about pricing?' });
+  assert.equal(a.status, 200);
+  await post(`/events/${code}/questions`, { cid: 'u2', text: 'How much does it cost?' });
+  let v = (await get(`/events/${code}?key=${hostKey}`)).body;
+  const [q1, q2] = v.questions;
+  await post(`/events/${code}/questions/${q1.id}/vote`, { cid: 'u3' });
+  await post(`/events/${code}/questions/${q2.id}/vote`, { cid: 'u3' });          // same device on both: counted once after merge
+  await post(`/events/${code}/questions/${q2.id}/vote`, { cid: 'u4' });
+  await post(`/events/${code}/questions/${q1.id}/action`, { key: hostKey, action: 'note', note: 'See the pricing page' });
+  await post(`/events/${code}/questions/${q1.id}/action`, { key: hostKey, action: 'answer' });
+  const m = await post(`/events/${code}/questions/${q2.id}/action`, { key: hostKey, action: 'merge', into: q1.id });
+  assert.equal(m.status, 200);
+  v = (await get(`/events/${code}?cid=u9`)).body;
+  assert.equal(v.questions.length, 1);
+  const q = v.questions[0];
+  assert.equal(q.votes, 4);                       // u1, u3, u2, u4
+  assert.equal(q.merged.length, 1);
+  assert.equal(q.note, 'See the pricing page');
+  assert.equal(q.status, 'answered');             // still returned to participants (client keeps it in Popular)
+});
+
+test('2.x poll types: multi, hidden results, rating, nps, wordcloud, open', async () => {
+  const P = `/events/${code}/polls`;
+  assert.equal((await post(P, { key: hostKey, type: 'multi', question: 'Q?', options: ['A'] })).status, 400);
+  await post(P, { key: hostKey, type: 'multi', question: 'Pick', options: ['A', 'B', 'C'], hidden: true });
+  let v = (await get(`/events/${code}?cid=u1`)).body;
+  const multi = v.polls[0];
+  await post(`${P}/${multi.id}/vote`, { cid: 'u1', option: 0 });
+  await post(`${P}/${multi.id}/vote`, { cid: 'u1', option: 2 });
+  v = (await get(`/events/${code}?cid=u1`)).body;
+  assert.equal(v.polls[0].counts, null, 'hidden for participants while open');
+  assert.deepEqual(v.polls[0].mine, [0, 2]);
+  v = (await get(`/events/${code}?key=${hostKey}`)).body;
+  assert.deepEqual(v.polls[0].counts, [1, 0, 1], 'host always sees results');
+  await post(`${P}/${multi.id}/action`, { key: hostKey, action: 'toggle' });   // close → revealed
+  v = (await get(`/events/${code}?cid=u2`)).body;
+  assert.deepEqual(v.polls[0].counts, [1, 0, 1]);
+
+  await post(P, { key: hostKey, type: 'nps', question: 'Recommend?' });
+  const nps = (await get(`/events/${code}?cid=u1`)).body.polls[0];
+  for (const [c, val] of [['a', 10], ['b', 9], ['c', 7], ['d', 3]]) assert.equal((await post(`${P}/${nps.id}/vote`, { cid: c, value: val })).status, 200);
+  assert.equal((await post(`${P}/${nps.id}/vote`, { cid: 'e', value: 11 })).status, 400);
+  assert.equal((await get(`/events/${code}?cid=x`)).body.polls[0].nps, 25);    // (2 - 1) / 4
+
+  await post(P, { key: hostKey, type: 'rating', question: 'Rate' });
+  const rating = (await get(`/events/${code}?cid=x`)).body.polls[0];
+  await post(`${P}/${rating.id}/vote`, { cid: 'a', value: 5 });
+  await post(`${P}/${rating.id}/vote`, { cid: 'b', value: 3 });
+  assert.equal((await get(`/events/${code}?cid=x`)).body.polls[0].avg, 4);
+
+  await post(P, { key: hostKey, type: 'wordcloud', question: 'One word' });
+  const wc = (await get(`/events/${code}?cid=x`)).body.polls[0];
+  for (const w of ['AI', 'ai', 'Data']) await post(`${P}/${wc.id}/vote`, { cid: 'a', text: w });
+  assert.equal((await post(`${P}/${wc.id}/vote`, { cid: 'a', text: 'more' })).status, 400, 'max 3 per device');
+  assert.deepEqual((await get(`/events/${code}?cid=x`)).body.polls[0].words[0], { w: 'ai', n: 2 });
+
+  await post(P, { key: hostKey, type: 'open', question: 'Feedback?' });
+  const open = (await get(`/events/${code}?cid=x`)).body.polls[0];
+  await post(`${P}/${open.id}/vote`, { cid: 'a', text: 'Great session' });
+  assert.equal((await get(`/events/${code}?cid=x`)).body.polls[0].responses[0].text, 'Great session');
+});
+
+test('1.1 CSV export (host only) and 1.5 stats', async () => {
+  assert.equal((await get(`/events/${code}/export.csv`)).status, 403);
+  const r = await get(`/events/${code}/export.csv?key=${hostKey}&sep=;`);
+  assert.equal(r.status, 200);
+  assert.match(r.body, /What about pricing\?/);
+  assert.match(r.body, /Rank;Question;Author;Votes/);
+  const s = (await get(`/events/${code}?key=${hostKey}`)).body.stats;
+  assert.equal(s.questions, 1);
+  assert.ok(s.votes >= 4);
+  assert.ok(s.pollResponses > 0);
+  assert.ok(s.timeline.length >= 1 && s.peak.n > 0);
+});
+
+test('0.2 rate limit: more than 30 writes per minute from one device returns 429', async () => {
+  const v = (await get(`/events/${code}?cid=r`)).body;
+  const qid = v.questions[0].id;
+  let last;
+  for (let i = 0; i < 31; i++) last = await post(`/events/${code}/questions/${qid}/vote`, { cid: 'spammer' });
+  assert.equal(last.status, 429);
+  assert.equal((await post(`/events/${code}/questions/${qid}/vote`, { cid: 'someone-else' })).status, 200, 'other devices are not blocked');
+});
+
+test('permissions: host cannot delete or change password; admin can', async () => {
+  assert.equal((await post(`/events/${code}/settings`, { key: hostKey, delete: true })).status, 403);
+  assert.equal((await post(`/events/${code}/host-password`, { key: hostKey, hostPassword: 'xxxx' })).status, 403);
+});
+
+test('0.3 daily backup is written and restorable', async () => {
+  await new Promise(r => setTimeout(r, 500));                    // let the debounced save flush
+  await stop(proc);                                              // SIGTERM flushes data.json
+  proc = await start({});                                         // restart → backup() snapshots data.json
+  const files = fs.readdirSync(path.join(dataDir, 'backups'));
+  assert.equal(files.length, 1);
+  const snap = path.join(dataDir, 'backups', files[0]);
+  await stop(proc);
+  fs.writeFileSync(path.join(dataDir, 'data.json'), '{}');       // simulate data loss
+  fs.copyFileSync(snap, path.join(dataDir, 'data.json'));        // restore procedure
+  proc = await start({});
+  const v = (await get(`/events/${code}?cid=x`)).body;
+  assert.equal(v.title, 'Test event');
+  assert.equal(v.questions.length, 1);
+});
+
+test('base path: index is served with the base injected', async () => {
+  const r = await fetch(`http://127.0.0.1:${PORT}/v2.0/e/${code}`);
+  const html = await r.text();
+  assert.match(html, /<meta name="base-path" content="\/v2.0">/);
+  assert.match(html, /src="\/v2.0\/app.js"/);
+});

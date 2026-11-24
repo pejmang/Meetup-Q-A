@@ -5,7 +5,9 @@ services:
     ports:
       - "127.0.0.1:${HOST_PORT:-3000}:3000"
     environment:
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin2027}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+      BASE_PATH: ${BASE_PATH:-}
+      TRUST_PROXY: ${TRUST_PROXY:-1}
     volumes:
       - qa-data:/data
 volumes:

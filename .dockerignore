@@ -1,4 +1,7 @@
-data.json
 node_modules
-*.log
+data.json
+.env
 .git
+test
+.github
+backups

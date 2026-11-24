@@ -1,0 +1,35 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [18, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm test
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t meetup-qa:ci .
+      - name: Smoke test
+        run: |
+          docker run -d --name qa -e ADMIN_PASSWORD=ci-password-123 -p 3000:3000 meetup-qa:ci
+          for i in $(seq 1 20); do curl -fs http://127.0.0.1:3000/healthz && exit 0; sleep 1; done
+          docker logs qa; exit 1
+      - name: Refuses to start without ADMIN_PASSWORD
+        run: |
+          if docker run --rm meetup-qa:ci; then echo "should have failed"; exit 1; fi
+      - name: Data volume is writable by the app user
+        run: |
+          docker run -d --name qa2 -e ADMIN_PASSWORD=ci-password-123 -v qa-ci-data:/data meetup-qa:ci
+          sleep 3; docker exec qa2 sh -c 'touch /data/x && echo writable'
