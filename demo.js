@@ -63,7 +63,7 @@ const CONTENT = {
   },
 };
 
-function buildDemo({ lang, code, hostKey, hostPass, uid }) {
+function buildDemo({ lang, code, hostKey, hostPass, uid, days = 1 }) {
   const C = CONTENT[lang] || CONTENT.en;
   let seed = 20261124;
   const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
@@ -111,10 +111,25 @@ function buildDemo({ lang, code, hostKey, hostPass, uid }) {
   const nps = {}; for (const v of sample(52)) nps[v] = [10, 10, 9, 9, 9, 8, 8, 7, 6, 5, 10, 9][Math.floor(rnd() * 12)];
   polls.push({ id: uid(), type: 'nps', question: '', open: true, hidden: true, persistent: true, responses: nps, created: start });
 
-  // Minute-by-minute audience: arrivals, plateau, Q&A peak around minute 75, slow departure
   const tl = {}, actives = new Set();
   let peak = 0, peakAt = start;
-  for (let m = 0; m <= 120; m++) {
+  if (days > 1) {
+    // Multi-day event: sessions from 09:00 to 18:00 each day, busiest on day 2, ending now
+    const DAY = 86400000, today9 = Math.floor(now / DAY) * DAY + 9 * 3600000 - (now % DAY < 9 * 3600000 ? DAY : 0);
+    for (let d = 0; d < days; d++) {
+      const day0 = today9 - (days - 1 - d) * DAY, boost = d === 1 ? 1.25 : 1;
+      for (let m = 0; m <= 540; m++) {
+        const t0 = day0 + m * MIN; if (t0 > now) break;
+        const o = Math.max(3, Math.round(boost * (8 + 50 * Math.min(1, m / 40) - 25 * Math.exp(-(((m - 225) / 30) ** 2)) + 18 * Math.exp(-(((m - 390) / 25) ** 2)) - Math.max(0, m - 480) * 0.8) + rnd() * 4 - 2));
+        const a = Math.max(0, Math.round(boost * (1 + 8 * Math.exp(-(((m - 390) / 20) ** 2)) + 4 * Math.exp(-(((m - 120) / 15) ** 2))) + rnd() * 2 - 0.5));
+        const u = sample(Math.min(a, o)); u.forEach(x => actives.add(x));
+        tl[t0] = { o, a, u };
+        if (o > peak) { peak = o; peakAt = t0; }
+      }
+    }
+  }
+  // Minute-by-minute audience: arrivals, plateau, Q&A peak around minute 75, slow departure
+  for (let m = 0; m <= 120 && days <= 1; m++) {
     const o = Math.max(4, Math.round(10 + 54 * Math.min(1, m / 22) + 16 * Math.exp(-(((m - 75) / 8) ** 2)) - Math.max(0, m - 100) * 1.5 + (rnd() * 4 - 2)));
     const a = Math.max(0, Math.round(2 + 12 * Math.exp(-(((m - 75) / 6) ** 2)) + 6 * Math.exp(-(((m - 40) / 4) ** 2)) + 4 * Math.exp(-(((m - 15) / 3) ** 2)) + rnd() * 3 - 1));
     const u = sample(Math.min(a, o));
@@ -124,8 +139,9 @@ function buildDemo({ lang, code, hostKey, hostPass, uid }) {
   }
   for (const q of questions) q.voters.forEach(v => actives.add(v));
 
+  if (days > 1) C.title = C.title.replace(/\(/, `(${days} ${lang === 'fr' ? 'jours' : 'days'}, `);
   return { code, title: C.title, hostKey, hostPass, open: true, moderation: false, demo: true, lang,
-    questions, polls, created: start, participants: people.slice(0, Math.max(peak + 8, 0)), actives: [...actives].filter(x => people.includes(x)),
+    questions, polls, created: days > 1 ? Math.min(...Object.keys(tl).map(Number)) : start, participants: people.slice(0, Math.max(peak + 8, 0)), actives: [...actives].filter(x => people.includes(x)),
     peakOnline: peak, peakOnlineAt: peakAt, tl };
 }
 

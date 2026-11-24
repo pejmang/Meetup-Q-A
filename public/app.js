@@ -70,6 +70,11 @@ function ago(ts) {
   return hh < 24 ? t('time.h', { n: hh }) : t('time.d', { n: Math.round(hh / 24) });
 }
 const fmtDate = ts => ts ? new Date(ts).toLocaleString(LANG === 'fr' ? 'fr-FR' : 'en-GB', { dateStyle: 'long', timeStyle: 'short' }) : '';
+const loc = () => LANG === 'fr' ? 'fr-FR' : 'en-GB';
+const fmtDay = ts => new Date(ts).toLocaleDateString(loc(), { weekday: 'short', day: 'numeric', month: 'short' });
+const fmtDayTime = ts => new Date(ts).toLocaleString(loc(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const isMultiDay = s => !!s.range && s.range.end - s.range.start >= 20 * 3600000;
+const resLabel = r => r < 60 ? `${r} min` : r < 1440 ? `${r / 60} h` : (LANG === 'fr' ? `${r / 1440} j` : `${r / 1440} d`);
 const fmtTime = ts => ts ? new Date(ts).toLocaleTimeString(LANG === 'fr' ? 'fr-FR' : 'en-GB', { hour: '2-digit', minute: '2-digit' }) : '—';
 
 // ---------- Routing ----------
@@ -145,7 +150,7 @@ function home() {
     const top = h('div', { class: 'between hometop' }, BASE ? h('span', { class: 'tag beta' }, 'staging ' + BASE.slice(1)) : h('span', {}),
       h('div', { class: 'between' },
         st.admin
-          ? [h('span', { class: 'role admin' }, t('home.adminSignedIn')), h('button', { class: 'btn small', onclick: () => { safe('adminToken', ''); st.admin = false; refresh(); } }, t('home.signOut'))]
+          ? [h('span', { class: 'role admin' }, t('home.adminSignedIn')), h('button', { class: 'btn small', onclick: () => { st.pwForm = !st.pwForm; draw(); document.querySelector('[data-keep="apw0"]')?.focus(); } }, '🔑 ' + t('apw.button')), h('button', { class: 'btn small', onclick: () => { safe('adminToken', ''); st.admin = false; refresh(); } }, t('home.signOut'))]
           : h('button', { class: 'btn small', onclick: () => { st.login = !st.login; draw(); document.querySelector('[data-keep="pwd"]')?.focus(); } }, '🔐 ' + t('home.signIn')),
         langBtn()));
 
@@ -167,6 +172,19 @@ function home() {
       h('div', { class: 'muted' }, st.loginMode === 'admin' ? t('login.adminHint') : t('login.hostHint')),
       st.loginMode === 'host' && hostCodeIn, pwd, h('button', { class: 'btn primary' }, t('login.submit')));
 
+    const pwIn = (k, ph, ac) => h('input', { type: 'password', 'data-keep': k, placeholder: ph, 'aria-label': ph, autocomplete: ac, style: fieldStyle });
+    const [cur, nw, cf] = [pwIn('apw0', t('apw.current'), 'current-password'), pwIn('apw1', t('apw.new'), 'new-password'), pwIn('apw2', t('apw.confirm'), 'new-password')];
+    const pwCard = st.admin && st.pwForm && h('form', { class: 'card stack pw-card', onsubmit: async e => {
+      e.preventDefault();
+      if (nw.value.length < 8) { toast(t('err.adminPwLength')); return nw.focus(); }
+      if (nw.value !== cf.value) { toast(t('apw.mismatch')); return cf.select(); }
+      try {
+        const r = await api('/admin-password', { current: cur.value, next: nw.value });
+        safe('adminToken', r.token); st.pwForm = false; toast('✔ ' + t('apw.done')); draw();
+      } catch { cur.select(); }
+    } }, h('h2', { style: 'margin:0' }, '🔑 ' + t('apw.title')), h('p', { class: 'muted', style: 'margin:0' }, t('apw.hint')), cur, nw, cf,
+      h('div', { class: 'row-actions', style: 'margin:0' }, h('button', { class: 'btn primary' }, t('apw.submit')), h('button', { type: 'button', class: 'btn', onclick: () => { st.pwForm = false; draw(); } }, t('common.cancel'))));
+
     const create = st.admin && h('form', { class: 'card stack', onsubmit: async e => {
       e.preventDefault();
       const pw = st.newPw.trim();
@@ -179,18 +197,18 @@ function home() {
       h('div', { class: 'muted' }, t('create.hostPwHint')), hostPwIn,
       h('label', { class: 'row' }, mod, t('create.moderate')), h('button', { class: 'btn primary' }, t('create.submit')),
       h('div', { class: 'demo-row' }, h('span', { class: 'muted' }, '🎭 ' + t('demo.create')),
-        ['en', 'fr'].map(l => h('button', { type: 'button', class: 'btn small', onclick: async () => {
+        [['en', 1], ['fr', 1], ['en', 3]].map(([l, days]) => h('button', { type: 'button', class: 'btn small', onclick: async () => {
           const pw = st.newPw.trim();
-          const r = await api('/events/demo', { lang: l, hostPassword: pw });
+          const r = await api('/events/demo', { lang: l, hostPassword: pw, days });
           safe('key:' + r.code, r.hostKey); st.newPw = genPw();
           alert(t('demo.done', { code: r.code, pw }));
           go(`/e/${r.code}/host`);
-        } }, l === 'en' ? '🇬🇧 English' : '🇫🇷 Français'))));
+        } }, (l === 'en' ? '🇬🇧 English' : '🇫🇷 Français') + (days > 1 ? ' · ' + t('demo.days', { n: days }) : '')))));
 
     document.body.classList.toggle('admin-mode', st.admin);
     $app.replaceChildren(...[st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin'))].filter(Boolean), h('div', { class: 'wrap narrow' }, top,
       h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline'))),
-      login, create,
+      login, pwCard, create,
       h('h2', {}, t('home.live', { n: liveEv.length })),
       liveEv.length ? h('div', { class: 'stack' }, liveEv.map(eventCard)) : h('p', { class: 'empty' }, st.loaded ? t('home.noLive') : t('common.loading')),
       h('form', { class: 'card row-form', onsubmit: e => { e.preventDefault(); if (codeIn.value.trim()) go('/e/' + codeIn.value.trim().toUpperCase()); } },
@@ -307,15 +325,21 @@ function activityKpis(s) {
   const tile = (val, label, sub) => h('div', { class: 'kpi' }, h('b', {}, val), h('span', {}, label), sub && h('small', {}, sub));
   return h('div', { class: 'kpis' },
     tile(s.online, t('act.now')),
-    tile(s.peakOnline, t('act.peak'), s.peakOnlineAt ? t('act.at', { time: fmtTime(s.peakOnlineAt) }) : null),
+    tile(s.peakOnline, t('act.peak'), s.peakOnlineAt ? t('act.at', { time: isMultiDay(s) ? fmtDayTime(s.peakOnlineAt) : fmtTime(s.peakOnlineAt) }) : null),
     tile(s.participants, t('act.total')),
     tile(s.activeUsers, t('act.active'), t('act.engagement', { n: eng })),
-    tile(s.interactions, t('act.interactions'), s.peak.ts ? t('act.peakAct', { n: s.peak.n, time: fmtTime(s.peak.ts) }) : null));
+    tile(s.interactions, t('act.interactions'), s.peak.ts ? t('act.peakAct', { n: s.peak.n, time: isMultiDay(s) ? fmtDayTime(s.peak.ts) : fmtTime(s.peak.ts) }) : null));
 }
 
 function activityChart(s, opts = {}) {
-  const tl = s.timeline || [];
+  // Long events: 'recent' = last 2 hours per minute (live), 'all' = whole event at the automatic resolution
+  const useRecent = opts.range === 'recent' && s.recent;
+  const tl = (useRecent ? s.recent : s.timeline) || [];
+  const res = useRecent ? 1 : (s.resolution || 1);
   if (!tl.length) return h('p', { class: 'muted' }, t('act.noData'));
+  const multiDay = tl.length > 1 && tl[tl.length - 1].t - tl[0].t >= 20 * 3600000;
+  const tick = ts => multiDay ? (res >= 1440 ? fmtDay(ts) : fmtDayTime(ts)) : fmtTime(ts);
+  const when = ts => multiDay ? fmtDayTime(ts) : fmtTime(ts);
   const W = opts.w || 360, padL = 30, padR = 12, H1 = opts.big ? 220 : 120, H2 = opts.big ? 90 : 52, gap = 22, axisH = 18, top = 16;
   const H = top + H1 + gap + H2 + axisH;
   const n = tl.length, iw = W - padL - padR;
@@ -336,16 +360,16 @@ function activityChart(s, opts = {}) {
   // Peak marker (max people connected at once)
   let pi = 0; tl.forEach((d, i) => { if (d.online > tl[pi].online) pi = i; });
   const pk = tl[pi].online > 0 && [sv('circle', { cx: x(pi), cy: y1(tl[pi].online), r: opts.big ? 6 : 4, class: 'ch-peak' }),
-    sv('text', { x: Math.min(Math.max(x(pi), padL + 40), W - padR - 40), y: y1(tl[pi].online) - 7, 'text-anchor': 'middle', class: 'ch-lbl', 'font-size': fs }, t('act.peakLbl', { n: tl[pi].online, time: fmtTime(tl[pi].t) }))];
+    sv('text', { x: Math.min(Math.max(x(pi), padL + 40), W - padR - 40), y: y1(tl[pi].online) - 7, 'text-anchor': 'middle', class: 'ch-lbl', 'font-size': fs }, t('act.peakLbl', { n: tl[pi].online, time: when(tl[pi].t) }))];
   // Bars: interactions per minute (2px gap between bars, rounded data-end)
   const bw = Math.max(1, Math.min(opts.big ? 18 : 10, iw / n - 2));
   const bars = tl.map((d, i) => d.actions > 0 && sv('rect', { x: x(i) - bw / 2, y: y2(d.actions), width: bw, height: Math.max(1, y2Base - y2(d.actions)), rx: Math.min(2, bw / 2), class: 'ch-bar' }));
   // Time axis: ~5 ticks
-  const step = Math.max(1, Math.ceil(n / (opts.big ? 8 : 5)));
+  const step = Math.max(1, Math.ceil(n / (multiDay ? (opts.big ? 6 : 3) : (opts.big ? 8 : 5))));
   const ticks = tl.map((d, i) => (i % step === 0 || i === n - 1) && (i === n - 1 || n - 1 - i >= step / 2) &&
-    sv('text', { x: x(i), y: H - 4, 'text-anchor': i === 0 && n > 1 ? 'start' : i === n - 1 && n > 1 ? 'end' : 'middle', class: 'ch-ax', 'font-size': fs }, fmtTime(d.t)));
+    sv('text', { x: x(i), y: H - 4, 'text-anchor': i === 0 && n > 1 ? 'start' : i === n - 1 && n > 1 ? 'end' : 'middle', class: 'ch-ax', 'font-size': fs }, tick(d.t)));
   const titles = [sv('text', { x: padL, y: top - 5, class: 'ch-ttl', 'font-size': fs }, t('act.people')),
-    sv('text', { x: padL, y: top + H1 + gap - 6, class: 'ch-ttl', 'font-size': fs }, t('act.perMin'))];
+    sv('text', { x: padL, y: top + H1 + gap - 6, class: 'ch-ttl', 'font-size': fs }, res === 1 ? t('act.perMin') : t('act.perRes', { res: resLabel(res) }))];
   // Hover: crosshair + tooltip
   const cross = sv('line', { y1: top, y2: y2Base, class: 'ch-cross', visibility: 'hidden' });
   const tip = h('div', { class: 'ch-tip', hidden: true });
@@ -357,7 +381,8 @@ function activityChart(s, opts = {}) {
       h('span', {}, h('i', { class: 'sw sw-o' }), t('act.lgOnline')),
       h('span', {}, h('i', { class: 'sw sw-a' }), t('act.lgActive')),
       h('span', {}, h('i', { class: 'sw sw-b' }), t('act.lgActions'))),
-    h('div', { class: 'ch-plot' }, svg, tip));
+    h('div', { class: 'ch-plot' }, svg, tip),
+    h('div', { class: 'muted ch-scale' }, useRecent ? t('act.scaleRecent') : t('act.scale', { res: resLabel(res), from: when(tl[0].t), to: when(tl[tl.length - 1].t) })));
   const show = ev => {
     const r = svg.getBoundingClientRect();
     const px = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
@@ -366,7 +391,7 @@ function activityChart(s, opts = {}) {
     const d = tl[i];
     cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible');
     tip.hidden = false;
-    tip.replaceChildren(h('b', {}, fmtTime(d.t)),
+    tip.replaceChildren(h('b', {}, when(d.t) + (res > 1 ? ' (+' + resLabel(res) + ')' : '')),
       h('div', {}, h('i', { class: 'sw sw-o' }), t('act.lgOnline') + ' : ' + d.online),
       h('div', {}, h('i', { class: 'sw sw-a' }), t('act.lgActive') + ' : ' + d.active),
       h('div', {}, h('i', { class: 'sw sw-b' }), t('act.lgActions') + ' : ' + d.actions));
@@ -378,7 +403,7 @@ function activityChart(s, opts = {}) {
   hit.addEventListener('mouseleave', hide);
   if (opts.table) wrap.append(h('details', { class: 'ch-table' }, h('summary', { class: 'muted' }, t('act.table')),
     h('table', {}, h('thead', {}, h('tr', {}, h('th', {}, t('act.time')), h('th', {}, t('act.lgOnline')), h('th', {}, t('act.lgActive')), h('th', {}, t('act.lgActions')))),
-      h('tbody', {}, tl.filter(d => d.online || d.actions).map(d => h('tr', {}, h('td', {}, fmtTime(d.t)), h('td', {}, d.online), h('td', {}, d.active), h('td', {}, d.actions)))))));
+      h('tbody', {}, tl.filter(d => d.online || d.actions).map(d => h('tr', {}, h('td', {}, when(d.t)), h('td', {}, d.online), h('td', {}, d.active), h('td', {}, d.actions)))))));
   return wrap;
 }
 
@@ -501,7 +526,7 @@ function live(code, mode) {
       h('div', { class: 'between' }, h('b', {}, '📈 ' + t('an.title')), h('span', { class: 'live-dot' }, t('poll.live'))),
       h('p', { class: 'muted', style: 'margin:0' }, t('an.guestSub')),
       activityKpis(d.stats),
-      activityChart(d.stats, { w: 360 }));
+      activityChart(d.stats, { w: 360, range: 'recent' }));
   }
 
   // ----- Participant: polls panel -----
@@ -604,7 +629,7 @@ function live(code, mode) {
     return h('section', { class: 'card analytics-box' },
       h('div', { class: 'between' }, h('b', {}, '📈 ' + t('an.title')), h('span', { class: 'live-dot' }, t('poll.live'))),
       activityKpis(s),
-      activityChart(s, { w: 360 }),
+      activityChart(s, { w: 360, range: 'recent' }),
       h('div', { class: 'row-actions' },
         h('button', { class: 'btn small primary', onclick: () => { state.tab = 'analytics'; render(); window.scrollTo(0, 0); } }, '📈 ' + t('an.open'))),
       analyticsActions(d));
@@ -613,13 +638,16 @@ function live(code, mode) {
   function analyticsPanel(d) {
     const s = d.stats;
     const tile = (val, label) => h('div', { class: 'kpi' }, h('b', {}, val), h('span', {}, label));
-    const dur = s.timeline.length ? Math.max(1, s.timeline.length) : 0;
+    const mins = s.range ? Math.round((s.range.end - s.range.start) / 60000) + 1 : 0;
+    const dur = !mins ? '—' : mins < 120 ? `${mins} min` : mins < 2880 ? `${Math.round(mins / 60)} h` : `${Math.floor(mins / 1440)} ${LANG === 'fr' ? 'j' : 'd'} ${Math.round((mins % 1440) / 60)} h`;
     return h('section', { class: 'analytics-full stack' },
       h('div', { class: 'card stack' },
         h('div', { class: 'between' }, h('h2', { style: 'margin:0' }, '📈 ' + t('an.title')), h('span', { class: 'live-dot' }, t('poll.live'))),
-        h('p', { class: 'muted', style: 'margin:0' }, t('an.sub')),
+        h('p', { class: 'muted', style: 'margin:0' }, t('an.sub', { res: resLabel(s.resolution || 1) })),
         activityKpis(s),
-        activityChart(s, { w: 760, table: true })),
+        s.recent && h('div', { class: 'seg seg-sm', role: 'tablist' }, [['all', t('act.rangeAll')], ['recent', t('act.rangeRecent')]].map(([k, l]) =>
+          h('button', { role: 'tab', 'aria-selected': String((state.anRange || 'all') === k), onclick: () => { state.anRange = k; render(); } }, l))),
+        activityChart(s, { w: 760, table: true, range: state.anRange || 'all' })),
       h('div', { class: 'card stack' },
         h('b', {}, '💬 ' + t('an.content')),
         h('div', { class: 'kpis kpis-6' },
@@ -627,7 +655,7 @@ function live(code, mode) {
           tile(s.votes, t('stats.votes')), tile(s.reactions, t('stats.reactions')),
           tile(s.pollResponses, t('stats.pollResponses')),
           tile(s.nps !== undefined && s.nps != null ? (s.nps > 0 ? '+' : '') + s.nps : '—', t('stats.nps')),
-          tile(dur ? t('an.minutes', { n: dur }) : '—', t('an.duration')),
+          tile(dur, t('an.duration')),
           tile(s.participants ? (s.interactions / s.participants).toFixed(1) : '—', t('an.perPerson')))),
       h('div', { class: 'card' }, h('b', {}, '⚙️ ' + t('an.actions')), analyticsActions(d)));
   }
@@ -746,7 +774,7 @@ function live(code, mode) {
     const joinUrl = `${shareBase()}/e/${d.code}`;
     let mainBlock;
     if (d.screenPoll === 'activity' && d.stats) {
-      mainBlock = h('div', { class: 'screen-act' }, h('h2', {}, '📈 ' + t('act.screenTitle')), activityKpis(d.stats), activityChart(d.stats, { w: 900, big: true }));
+      mainBlock = h('div', { class: 'screen-act' }, h('h2', {}, '📈 ' + t('act.screenTitle')), activityKpis(d.stats), activityChart(d.stats, { w: 900, big: true, range: 'recent' }));
     } else if (hl) {
       mainBlock = h('div', {}, h('div', { class: 'big-q' }, '« ' + hl.text + ' »'), h('div', { class: 'muted' }, (hl.author || t('q.anonymous')) + ' · 👍 ' + hl.votes),
         hl.note && h('div', { class: 'note big' }, '💬 ' + hl.note));

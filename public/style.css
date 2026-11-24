@@ -369,3 +369,8 @@ body.host-mode .toolbar { top: 82px; }
 body.admin-mode { --bg: #f1eefb; }
 @media (prefers-color-scheme: dark) { body.host-mode { --bg: #0a1530; } body.admin-mode { --bg: #120f26; } }
 .merged-notice { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--warn) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); font-size: .9rem; overflow-wrap: anywhere; }
+.seg button { line-height: 1.2; }
+@media (max-width: 420px) { .seg button { font-size: .86rem; padding: 8px 4px; } }
+.pw-card { border-top: 4px solid #7b5cd6; }
+.ch-scale { font-size: .74rem; margin-top: 2px; }
+.seg.seg-sm { max-width: 420px; } .seg.seg-sm button { padding: 6px 8px; font-size: .84rem; }

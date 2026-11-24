@@ -38,9 +38,6 @@ catch (e) { console.error(`FATAL: cannot write to DATA_DIR (${DATA_DIR}): ${e.co
 
 // ---------- Auth helpers ----------
 const sha = x => crypto.createHash('sha256').update(String(x)).digest();
-const adminToken = crypto.createHmac('sha256', ADMIN_PASSWORD).update('meetup-admin').digest('hex');
-const okToken = t => typeof t === 'string' && t.length === adminToken.length && crypto.timingSafeEqual(Buffer.from(t), Buffer.from(adminToken));
-const isAdminPw = pw => crypto.timingSafeEqual(sha(pw), sha(ADMIN_PASSWORD));
 const hashPw = pw => { const salt = crypto.randomBytes(16).toString('hex'); return salt + ':' + crypto.scryptSync(String(pw), salt, 32).toString('hex'); };
 const checkPw = (pw, stored) => {
   if (!stored || typeof pw !== 'string') return false;
@@ -48,6 +45,25 @@ const checkPw = (pw, stored) => {
   return crypto.timingSafeEqual(crypto.scryptSync(pw, salt, 32), Buffer.from(h, 'hex'));
 };
 const delay = ms => new Promise(r => setTimeout(r, ms));
+
+// ---------- Admin password ----------
+// ADMIN_PASSWORD (env) is the initial password. Once changed from the admin UI, the new one is stored hashed in
+// DATA_DIR/admin.json and replaces it. Recovery: start once with ADMIN_PASSWORD_RESET=1 to go back to ADMIN_PASSWORD.
+const ADMIN_FILE = path.join(DATA_DIR, 'admin.json');
+let adminConf = {};
+if (process.env.ADMIN_PASSWORD_RESET === '1') { try { fs.unlinkSync(ADMIN_FILE); console.log('Admin password reset to ADMIN_PASSWORD'); } catch {} }
+try { adminConf = JSON.parse(fs.readFileSync(ADMIN_FILE, 'utf8')); } catch { adminConf = {}; }
+const adminSecret = () => adminConf.passHash || ADMIN_PASSWORD;
+// The token changes with the password, so changing it signs out every other admin session
+const adminToken = () => crypto.createHmac('sha256', adminSecret()).update('meetup-admin').digest('hex');
+const okToken = t => { const a = adminToken(); return typeof t === 'string' && t.length === a.length && crypto.timingSafeEqual(Buffer.from(t), Buffer.from(a)); };
+const isAdminPw = pw => adminConf.passHash ? checkPw(String(pw ?? ''), adminConf.passHash) : crypto.timingSafeEqual(sha(pw), sha(ADMIN_PASSWORD));
+function setAdminPassword(pw) {
+  adminConf = { passHash: hashPw(pw), changedAt: Date.now() };
+  const tmp = ADMIN_FILE + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(adminConf), { mode: 0o600 });
+  fs.renameSync(tmp, ADMIN_FILE);
+}
 
 // ---------- Rate limiting (fixed one-minute windows) ----------
 const buckets = new Map();
@@ -128,6 +144,25 @@ function sampleOnline(ev) {
 }
 const onlineCount = code => new Set([...clients.values()].filter(c => c.code === code).map(c => c.cid || Math.random())).size;
 
+// Resolution (minutes) so that the whole event fits in about 240 points: 1 min … 1 day
+const RESOLUTIONS = [1, 5, 15, 30, 60, 180, 360, 1440];
+const pickResolution = spanMs => RESOLUTIONS.find(r => spanMs / (r * MIN) <= 240) || 1440;
+// Buckets of r minutes: online = max at the same time, actions = sum, active = distinct devices
+function aggregate(tl, keys, from, to, r) {
+  const size = r * MIN, first = Math.floor(from / size) * size, out = [];
+  const idx = new Map();
+  for (let b = first; b <= to; b += size) { idx.set(b, out.length); out.push({ t: b, online: 0, actions: 0, active: 0, _u: r > 1 ? new Set() : null }); }
+  for (const k of keys) {
+    if (k < first || k > to) continue;
+    const x = tl[k], o = out[idx.get(Math.floor(k / size) * size)];
+    if (!o) continue;
+    o.online = Math.max(o.online, x.o); o.actions += x.a;
+    if (o._u) x.u.forEach(u => o._u.add(u)); else o.active = x.u.length;
+  }
+  for (const o of out) { if (o._u) o.active = o._u.size; delete o._u; }
+  return out;
+}
+
 // ---------- Views by role ----------
 const EMOJIS = ['❤️', '🔥', '💡', '👏'];
 const POLL_TYPES = ['choice', 'multi', 'wordcloud', 'rating', 'nps', 'open'];
@@ -179,17 +214,18 @@ function pollView(p, isHost, cid, ev) {
 
 function statsView(ev) {
   const live = ev.questions.filter(q => q.status !== 'pending');
-  // Continuous per-minute series (gaps = nobody connected / no interaction), last 12 hours at most
+  // Whole event, from the first presence to the closing (or now), at an automatic resolution
   const keys = Object.keys(ev.tl || {}).map(Number).sort((a, b) => a - b);
-  const timeline = [];
+  let timeline = [], recent = null, resolution = 1, range = null;
   if (keys.length) {
-    const end = Math.max(keys[keys.length - 1], ev.ended ? 0 : minuteOf(Date.now()));
-    for (let m = Math.max(keys[0], end - 719 * MIN); m <= end; m += MIN) {
-      const x = ev.tl[m];
-      timeline.push({ t: m, online: x ? x.o : 0, actions: x ? x.a : 0, active: x ? x.u.length : 0 });
-    }
+    const end = Math.max(keys[keys.length - 1], ev.ended ? (ev.endedAt ? minuteOf(ev.endedAt) : 0) : minuteOf(Date.now()));
+    const start = keys[0];
+    resolution = pickResolution(end - start + MIN);
+    timeline = aggregate(ev.tl, keys, start, end, resolution);
+    if (end - start + MIN > 180 * MIN) recent = aggregate(ev.tl, keys, end - 119 * MIN, end, 1);   // live view for long events
+    range = { start, end };
   }
-  const peakA = timeline.reduce((m, x) => (x.actions > m.n ? { t: x.t, n: x.actions } : m), { t: null, n: 0 });
+  const peakA = keys.reduce((m, k) => (ev.tl[k].a > m.n ? { t: k, n: ev.tl[k].a } : m), { t: null, n: 0 });
   const pollResponses = ev.polls.reduce((s, p) => s + pollView(p, true, '').total, 0);
   return {
     participants: new Set([...(ev.participants || []), ...(ev.actives || [])]).size, peakOnline: ev.peakOnline || 0, peakOnlineAt: ev.peakOnlineAt || null,
@@ -200,7 +236,7 @@ function statsView(ev) {
     reactions: live.reduce((s, q) => s + Object.values(q.reacts || {}).reduce((a, r) => a + r.length, 0), 0),
     polls: ev.polls.filter(p => !p.draft).length, pollResponses,
     ...(() => { const n = ev.polls.find(p => p.persistent); if (!n) return {}; const v = pollView(n, true, ''); return { nps: v.nps ?? null, npsResponses: v.total }; })(),
-    peak: { ts: peakA.t, n: peakA.n }, timeline,
+    peak: { ts: peakA.t, n: peakA.n }, timeline, recent, resolution, range,
     created: ev.created, endedAt: ev.endedAt || null,
   };
 }
@@ -310,9 +346,20 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST' && parts[1] === 'login') {
         if (limited('login:' + ip, LOGIN_LIMIT)) return json(res, 429, { error: 'err.rate' });
         const b = await body(req);
-        if (isAdminPw(b.password)) return json(res, 200, { token: adminToken });
+        if (isAdminPw(b.password)) return json(res, 200, { token: adminToken() });
         await delay(700);
         return json(res, 401, { error: 'err.password' });
+      }
+      // Change the admin password (signed-in admin, current password required)
+      if (req.method === 'POST' && parts[1] === 'admin-password') {
+        if (limited('login:' + ip, LOGIN_LIMIT)) return json(res, 429, { error: 'err.rate' });
+        const b = await body(req);
+        if (!okToken(b.token)) return json(res, 401, { error: 'err.adminRequired' });
+        if (!isAdminPw(b.current)) { await delay(700); return json(res, 401, { error: 'err.password' }); }
+        const next = String(b.next || '');
+        if (next.length < 8 || next.length > 128) return json(res, 400, { error: 'err.adminPwLength' });
+        setAdminPassword(next);
+        return json(res, 200, { ok: true, token: adminToken() });
       }
       // Event list (public; admin also receives host keys)
       if (req.method === 'GET' && parts.length === 2 && parts[1] === 'events') {
@@ -333,7 +380,7 @@ const server = http.createServer(async (req, res) => {
         if (hostPassword.length < 4 || hostPassword.length > 64) return json(res, 400, { error: 'err.hostPw' });
         const code = newCode();
         const hostKey = crypto.randomBytes(12).toString('hex');
-        events[code] = buildDemo({ lang: b.lang === 'fr' ? 'fr' : 'en', code, hostKey, hostPass: hashPw(hostPassword), uid });
+        events[code] = buildDemo({ lang: b.lang === 'fr' ? 'fr' : 'en', code, hostKey, hostPass: hashPw(hostPassword), uid, days: Math.min(5, Math.max(1, Number(b.days) || 1)) });
         save();
         return json(res, 200, { code, hostKey });
       }
@@ -591,4 +638,4 @@ for (const ev of Object.values(events)) for (const p of ev.polls || []) if (!p.t
 if (require.main === module) {
   server.listen(PORT, '0.0.0.0', () => console.log(`Meetup Q&A v2 ready on port ${PORT}${BASE ? ` (base path ${BASE})` : ''}`));
 }
-module.exports = { server };
+module.exports = { server, aggregate, pickResolution };
