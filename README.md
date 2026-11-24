@@ -10,7 +10,7 @@ Try it with a fully simulated 3-day event (English, agenda, questions, polls, NP
 
 | View | Link |
 |---|---|
-| 🎛 **Host** (password: `demo2026`) | **https://interact.orbii.tech/v2.0/e/K4ARN/host** |
+| 🎛 **Host** (password: `demo20272028`) | **https://interact.orbii.tech/v2.0/e/K4ARN/host** |
 | 👥 Participant | https://interact.orbii.tech/v2.0/e/K4ARN |
 | 📺 Projection screen | https://interact.orbii.tech/v2.0/e/K4ARN/screen |
 
