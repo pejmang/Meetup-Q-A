@@ -20,17 +20,48 @@ Live Q&A and polls for meetups and events. Zero dependencies (Node ≥ 18), real
 
 Host passwords are stored hashed (scrypt). Resetting one rotates the event's host key, which signs out current hosts. The admin password also works as a host password on any event.
 
+## Features (v2.0)
+- **Post-event deliverable**: CSV export (questions, votes, notes, merged duplicates, polls), printable report → PDF (title, date, stats, ranked questions, poll results), host answer/note on each question, merge duplicates (votes are combined, a device is never counted twice), end-of-event statistics (participants, peak online, votes, poll responses, activity peak and timeline).
+- **6 poll formats**: single choice, multiple choice, live word cloud, rating 1–5, NPS 0–10, open question — each with an optional "hide results until the poll closes", all rendered on the projection screen.
+- **Prepared polls**: hosts prepare polls before the event (invisible to participants), edit them, and launch each one in one click.
+- **Event-long NPS**: every event gets an NPS open for the whole meetup (not closed by other polls; participants can change their score; results hidden until closed).
+- **Live audience chart**: per minute, people connected at the same time, active participants and interactions, with peaks, engagement rate, hover details and a data table; can be shown on the projection screen.
+- **French / English** interface (auto-detected, switchable).
+- **Security & hygiene**: no default admin password (the server refuses to start without one), rate limiting, daily backups, atomic writes, refuses to start if the data folder is not writable, tests + CI.
+
 ## Environment variables
 | Variable | Purpose | Default |
 |---|---|---|
-| `ADMIN_PASSWORD` | Admin password — **change it** | `Admin2027` |
+| `ADMIN_PASSWORD` | Admin password — **required** (min. 8 characters), the server refuses to start without it | — |
 | `PORT` | Listening port inside the app | `3000` |
-| `DATA_DIR` | Folder for `data.json` (persist it) | app folder |
+| `DATA_DIR` | Folder for `data.json` and `backups/` (persist it) | app folder |
+| `BASE_PATH` | Sub-path when served under e.g. `/v2.0` | empty (root) |
+| `TRUST_PROXY` | `1` = read the client IP from `X-Real-IP` / `X-Forwarded-For` (behind nginx) | `0` (`1` in docker-compose) |
+| `RATE_LIMIT_PER_MIN` | Writes (questions, votes, poll answers) per minute per IP **and device** → 429 above | `30` |
+| `LOGIN_LIMIT_PER_MIN` | Sign-in attempts per minute per IP | `10` |
+| `IP_LIMIT_PER_MIN` | All writes per minute per IP (whole room behind one Wi-Fi) | `600` |
+| `BACKUP_KEEP` | Daily backups kept | `14` |
 | `HOST_PORT` | Host port used by `docker-compose.yml` (bound to 127.0.0.1) | `3000` |
+
+Rate limiting is per IP **and** device on purpose: at a meetup, the whole room usually shares one public IP, so a strict per-IP limit would block everyone.
+
+## Backups and restore
+A snapshot of `data.json` is written to `DATA_DIR/backups/data-YYYY-MM-DD.json` at startup and refreshed every 6 hours (one file per day, `BACKUP_KEEP` kept). To restore:
+```bash
+docker compose stop
+docker compose run --rm --entrypoint sh meetup-qa -c 'cp /data/backups/data-2026-11-24.json /data/data.json'
+docker compose start
+```
+
+## Tests
+```bash
+npm test          # node:test, no dependencies
+```
+GitHub Actions runs the tests on Node 18 and 22, builds the Docker image and smoke-tests it on every push.
 
 ## Option A — Docker (recommended)
 ```bash
-cp .env.example .env     # set ADMIN_PASSWORD
+cp .env.example .env     # set ADMIN_PASSWORD (required)
 docker compose up -d --build
 ```
 Data lives in the `qa-data` volume. Health check: `GET /healthz`.

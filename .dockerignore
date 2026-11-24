@@ -4,7 +4,10 @@
 # Commercial use requires a separate license from ORBii SAS: info@orbii.tech
 # https://polyformproject.org/licenses/noncommercial/1.0.0
 
-data.json
 node_modules
-*.log
+data.json
+.env
 .git
+test
+.github
+backups

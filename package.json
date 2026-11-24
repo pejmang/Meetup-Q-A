@@ -1,10 +1,11 @@
 {
   "name": "meetup-qa",
-  "version": "1.0.0",
-  "description": "Q&A et sondages en direct pour meetups (type Slido), sans dépendance",
+  "version": "2.0.0-beta",
+  "description": "Live Q&A and polls for meetups (Slido-like), zero dependencies",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test test/server.test.js"
   },
   "engines": {
     "node": ">=18"
