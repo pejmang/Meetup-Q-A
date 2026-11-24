@@ -1,8 +1,20 @@
 # Meetup Q&A
 
-[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-7b5cd6)](https://polyformproject.org/licenses/noncommercial/1.0.0) [![CI](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml/badge.svg)](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml)
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-7b5cd6)](https://polyformproject.org/licenses/noncommercial/1.0.0) [![CI](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml/badge.svg)](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml) [![Live demo](https://img.shields.io/badge/live%20demo-try%20it-c8a24a)](https://interact.orbii.tech/v2.0/e/K4ARN/host)
 
 **Free for noncommercial use. For commercial use, contact us: [info@orbii.tech](mailto:info@orbii.tech)**
+
+## Live demo
+
+Try it with a fully simulated 3-day event (English, agenda, questions, polls, NPS, live analytics):
+
+| View | Link |
+|---|---|
+| 🎛 **Host** (password: `demo2026`) | **https://interact.orbii.tech/v2.0/e/K4ARN/host** |
+| 👥 Participant | https://interact.orbii.tech/v2.0/e/K4ARN |
+| 📺 Projection screen | https://interact.orbii.tech/v2.0/e/K4ARN/screen |
+
+The demo data is simulated and may be reset at any time.
 
 Live Q&A and polls for meetups and events. Zero dependencies (Node ≥ 18), real-time via Server-Sent Events, data stored in a single JSON file.
 
