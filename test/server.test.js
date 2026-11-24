@@ -142,12 +142,21 @@ test('event-long NPS: created by default, stays open when other polls launch, on
   assert.equal((await post(`/events/${code}/polls/${nps.id}/vote`, { cid: 'n1', value: 4 })).status, 200, 'vote can be changed');
   const guest = (await get(`/events/${code}?cid=n1`)).body.polls.find(p => p.persistent);
   assert.equal(guest.mine, 4);
-  assert.equal(guest.dist, undefined, 'results hidden from participants while open');
+  assert.notEqual(guest.dist, undefined, 'a participant who rated sees the NPS results');
+  const fresh = (await get(`/events/${code}?cid=never-rated`)).body;
+  assert.equal(fresh.polls.find(p => p.persistent).dist, undefined, 'hidden for participants who have not rated');
+  assert.equal(fresh.stats, undefined, 'no analytics before rating');
+  assert.ok((await get(`/events/${code}?cid=n1`)).body.stats, 'analytics unlocked after rating');
   await post(`/events/${code}/polls/${nps.id}/action`, { key: hostKey, action: 'screen' });
   v = (await get(`/events/${code}?key=${hostKey}`)).body;
   assert.equal(v.screenPoll, nps.id);
   assert.equal(v.stats.npsResponses, 1);
   assert.equal(v.stats.nps, -100);
+  const sse = await fetch(`http://127.0.0.1:${PORT}/v2.0/api/events/${code}/stream?cid=scr&screen=1`);
+  const reader = sse.body.getReader(); const chunk = new TextDecoder().decode((await reader.read()).value); reader.cancel();
+  const first = chunk.split('\n\n')[0].replace(/^data: /, '');   // the stream may deliver several messages at once
+  const onScreen = JSON.parse(first).polls.find(p => p.persistent);
+  assert.notEqual(onScreen.dist, undefined, 'the projection screen shows the results of the poll the host put on screen');
 });
 
 test('prepared polls: hidden from participants, editable, launched in one click', async () => {
@@ -187,6 +196,21 @@ test('simulated demo event: admin only, complete and consistent', async () => {
   assert.ok(s.nps > 0);
   assert.equal((await post(`/events/${r.body.code}/host-login`, { password: 'demo1234' })).body.hostKey, r.body.hostKey);
   assert.equal((await post(`/events/${r.body.code}/settings`, { token, delete: true })).status, 200);
+});
+
+test('admin can change the admin password; old password and old sessions stop working', async () => {
+  assert.equal((await post('/admin-password', { token, current: 'wrong', next: 'new-admin-pw-1' })).status, 401);
+  assert.equal((await post('/admin-password', { token, current: ADMIN, next: 'short' })).status, 400);
+  const r = await post('/admin-password', { token, current: ADMIN, next: 'new-admin-pw-1' });
+  assert.equal(r.status, 200);
+  assert.equal((await get(`/events?token=${token}`)).body.admin, false, 'old session signed out');
+  assert.equal((await post('/login', { password: ADMIN })).status, 401, 'old password refused');
+  const t2 = (await post('/login', { password: 'new-admin-pw-1' })).body.token;
+  assert.equal(t2, r.body.token);
+  assert.equal((await get(`/events?token=${t2}`)).body.admin, true);
+  // put it back so the other tests keep using ADMIN
+  assert.equal((await post('/admin-password', { token: t2, current: 'new-admin-pw-1', next: ADMIN })).status, 200);
+  token = (await post('/login', { password: ADMIN })).body.token;
 });
 
 test('1.1 CSV export (host only) and 1.5 stats', async () => {
@@ -230,6 +254,29 @@ test('0.3 daily backup is written and restorable', async () => {
   const v = (await get(`/events/${code}?cid=x`)).body;
   assert.equal(v.title, 'Test event');
   assert.equal(v.questions.length, 1);
+});
+
+test('timeline scale adapts to the event length (minutes → days)', () => {
+  // the server module refuses to load without ADMIN_PASSWORD, so load it in a child with env set
+  const out = spawnSync(process.execPath, ['-e', `
+    const { aggregate, pickResolution } = require(${JSON.stringify(SERVER)});
+    const MIN = 60000, start = Date.UTC(2026, 10, 24, 8, 0), tl = {};
+    for (let d = 0; d < 3; d++) for (let m = 0; m < 600; m += 7) tl[start + d * 86400000 + m * MIN] = { o: 10 + d, a: 2, u: ['a' + d, 'b'] };
+    const keys = Object.keys(tl).map(Number).sort((a, b) => a - b);
+    const end = keys[keys.length - 1];
+    const r = pickResolution(end - start + MIN);
+    const s = aggregate(tl, keys, start, end, r);
+    console.log(JSON.stringify({ r, n: s.length, max: Math.max(...s.map(x => x.online)), sum: s.reduce((a, x) => a + x.actions, 0), keys: keys.length,
+      short: pickResolution(90 * MIN), day: pickResolution(10 * 3600000), month: pickResolution(90 * 86400000) }));
+    process.exit(0);`], { env: { ...process.env, ADMIN_PASSWORD: ADMIN, DATA_DIR: dataDir, PORT: '0' }, encoding: 'utf8' });
+  const j = JSON.parse(out.stdout.trim().split('\n').pop());
+  assert.equal(j.short, 1);
+  assert.equal(j.day, 5);
+  assert.equal(j.month, 1440, 'a 3-month event is shown per day');
+  assert.equal(j.r, 15, 'an event spread over 3 days (~58 h) is shown in 15-minute steps');
+  assert.ok(j.n <= 240);
+  assert.equal(j.max, 12, 'peak is preserved (max)');
+  assert.equal(j.sum, j.keys * 2, 'interactions are preserved (sum)');
 });
 
 test('base path: index is served with the base injected', async () => {
