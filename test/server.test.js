@@ -166,6 +166,24 @@ test('prepared polls: hidden from participants, editable, launched in one click'
   assert.equal((await post(`${P}/${draft.id}/action`, { key: hostKey, action: 'launch' })).status, 400, 'launch only once');
 });
 
+test('simulated demo event: admin only, complete and consistent', async () => {
+  assert.equal((await post('/events/demo', { lang: 'en', hostPassword: 'demo1234' })).status, 401);
+  const r = await post('/events/demo', { token, lang: 'en', hostPassword: 'demo1234' });
+  assert.equal(r.status, 200);
+  const v = (await get(`/events/${r.body.code}?key=${r.body.hostKey}`)).body;
+  assert.equal(v.demo, true);
+  assert.match(v.title, /simulated/);
+  assert.ok(v.questions.length >= 9);
+  assert.deepEqual([...new Set(v.polls.map(p => p.type))].sort(), ['choice', 'multi', 'nps', 'open', 'rating', 'wordcloud']);
+  assert.ok(v.polls.some(p => p.draft) && v.polls.some(p => p.persistent && p.open) && v.polls.some(p => p.open && !p.persistent));
+  const s = v.stats;
+  assert.ok(s.timeline.length >= 120 && s.peakOnline > 50);
+  assert.ok(s.activeUsers <= s.participants, 'active participants never exceed connected people');
+  assert.ok(s.nps > 0);
+  assert.equal((await post(`/events/${r.body.code}/host-login`, { password: 'demo1234' })).body.hostKey, r.body.hostKey);
+  assert.equal((await post(`/events/${r.body.code}/settings`, { token, delete: true })).status, 200);
+});
+
 test('1.1 CSV export (host only) and 1.5 stats', async () => {
   assert.equal((await get(`/events/${code}/export.csv`)).status, 403);
   const r = await get(`/events/${code}/export.csv?key=${hostKey}&sep=;`);

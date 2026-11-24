@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
+const { buildDemo } = require('./demo');
 
 // ---------- Configuration ----------
 const PORT = Number(process.env.PORT) || 3000;
@@ -214,7 +215,7 @@ function view(ev, isHost, cid) {
       reacts: EMOJIS.map(e => ({ e, n: (q.reacts?.[e] || []).length, mine: (q.reacts?.[e] || []).includes(cid) })),
     }));
   return {
-    code: ev.code, title: ev.title, open: ev.open, moderation: ev.moderation, host: isHost, ended: !!ev.ended,
+    code: ev.code, title: ev.title, open: ev.open, moderation: ev.moderation, host: isHost, ended: !!ev.ended, demo: !!ev.demo,
     created: ev.created, online: onlineCount(ev.code), questions, screenPoll: ev.screenPoll || null,
     polls: ev.polls.filter(p => isHost || !p.draft).map(p => pollView(p, isHost, cid, ev)),
     ...(isHost || ev.screenPoll === 'activity' ? { stats: statsView(ev) } : {}),
@@ -312,12 +313,24 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'GET' && parts.length === 2 && parts[1] === 'events') {
         const admin = okToken(url.searchParams.get('token'));
         const list = Object.values(events).filter(e => admin || !e.ended).sort((a, b) => b.created - a.created).map(e => ({
-          code: e.code, title: e.title, open: e.open, ended: !!e.ended, created: e.created,
+          code: e.code, title: e.title, open: e.open, ended: !!e.ended, created: e.created, demo: !!e.demo,
           questions: e.questions.filter(q => q.status !== 'pending').length,
           online: onlineCount(e.code),
           ...(admin ? { hostKey: e.hostKey, hasHostPassword: !!e.hostPass, pending: e.questions.filter(q => q.status === 'pending').length } : {}),
         }));
         return json(res, 200, { events: list, admin });
+      }
+      // Simulated demo event (admin only): fully fictional content, recreated on demand
+      if (req.method === 'POST' && parts.length === 3 && parts[1] === 'events' && parts[2] === 'demo') {
+        const b = await body(req);
+        if (!okToken(b.token)) return json(res, 401, { error: 'err.adminRequired' });
+        const hostPassword = String(b.hostPassword || '').trim();
+        if (hostPassword.length < 4 || hostPassword.length > 64) return json(res, 400, { error: 'err.hostPw' });
+        const code = newCode();
+        const hostKey = crypto.randomBytes(12).toString('hex');
+        events[code] = buildDemo({ lang: b.lang === 'fr' ? 'fr' : 'en', code, hostKey, hostPass: hashPw(hostPassword), uid });
+        save();
+        return json(res, 200, { code, hostKey });
       }
       // Event creation (signed-in admin only)
       if (req.method === 'POST' && parts.length === 2 && parts[1] === 'events') {

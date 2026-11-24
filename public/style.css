@@ -349,3 +349,9 @@ body.screen { --c-online: #4f7fd1; --c-active: #b38d36; }
 .analytics-full .kpi:first-child { grid-column: auto; flex-direction: column; }
 .analytics-full .kpis.kpis-6 { grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 700px) { .analytics-full .kpis, .analytics-full .kpis.kpis-6 { grid-template-columns: repeat(2, 1fr); } }
+
+/* ===== Demo events ===== */
+.tag.demo { background: #7b5cd6; color: #fff; letter-spacing: .03em; }
+.title .tag.demo { flex: none; }
+.demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 10px; border-top: 1px dashed var(--line); }
+@media (max-width: 600px) { .title .tag.demo { display: none; } }

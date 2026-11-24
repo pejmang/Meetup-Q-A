@@ -116,7 +116,7 @@ function home() {
     if (st.admin && !e.hasHostPassword) bits.push('⚠ ' + t('home.noHostPw'));
     if (e.ended) bits.push(t('home.ended')); else if (!e.open) bits.push(t('home.qClosed'));
     return h('div', { class: `card ev ${e.ended ? 'ended' : ''}` },
-      h('div', { class: 'ev-main' }, h('b', {}, e.title), h('div', { class: 'muted' }, bits.join(' · ')), h('span', { class: 'code' }, e.code)),
+      h('div', { class: 'ev-main' }, h('b', {}, e.demo && h('span', { class: 'tag demo' }, t('demo.badge')), ' ', e.title), h('div', { class: 'muted' }, bits.join(' · ')), h('span', { class: 'code' }, e.code)),
       h('div', { class: 'row-actions', style: 'margin:0' },
         !e.ended && h('button', { class: 'btn primary small', onclick: () => go('/e/' + e.code) }, t('home.join')),
         !st.admin && h('button', { class: 'btn small', onclick: () => { st.login = true; st.loginMode = 'host'; st.hostCode = e.code; draw(); document.querySelector('[data-keep="pwd"]')?.focus(); } }, '🎛 ' + t('home.host')),
@@ -177,7 +177,15 @@ function home() {
       go(`/e/${r.code}/host`);
     } }, h('h2', { style: 'margin:0' }, '➕ ' + t('create.title')), titleIn,
       h('div', { class: 'muted' }, t('create.hostPwHint')), hostPwIn,
-      h('label', { class: 'row' }, mod, t('create.moderate')), h('button', { class: 'btn primary' }, t('create.submit')));
+      h('label', { class: 'row' }, mod, t('create.moderate')), h('button', { class: 'btn primary' }, t('create.submit')),
+      h('div', { class: 'demo-row' }, h('span', { class: 'muted' }, '🎭 ' + t('demo.create')),
+        ['en', 'fr'].map(l => h('button', { type: 'button', class: 'btn small', onclick: async () => {
+          const pw = st.newPw.trim();
+          const r = await api('/events/demo', { lang: l, hostPassword: pw });
+          safe('key:' + r.code, r.hostKey); st.newPw = genPw();
+          alert(t('demo.done', { code: r.code, pw }));
+          go(`/e/${r.code}/host`);
+        } }, l === 'en' ? '🇬🇧 English' : '🇫🇷 Français'))));
 
     $app.replaceChildren(h('div', { class: 'wrap narrow' }, top,
       h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline'))),
@@ -639,7 +647,7 @@ function live(code, mode) {
 
     const stat = (n, label) => h('div', { class: 'stat' }, h('b', {}, n), h('span', {}, label));
     const header = h('header', { class: 'topbar' }, h('div', { class: 'topbar-in' },
-      h('div', { class: 'title' }, h('span', { class: `role ${isHost ? 'admin' : ''}` }, isHost ? t('role.host') : t('role.participant')), h('h1', {}, d.title)),
+      h('div', { class: 'title' }, h('span', { class: `role ${isHost ? 'admin' : ''}` }, isHost ? t('role.host') : t('role.participant')), h('h1', {}, d.title), d.demo && h('span', { class: 'tag demo' }, t('demo.badge'))),
       h('div', { class: 'meta' }, h('span', { class: 'online', title: t('stats.online') }, '● ' + d.online), h('span', { class: 'code' }, d.code), langBtn())));
 
     const stats = h('div', { class: 'stats' },
