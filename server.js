@@ -32,6 +32,7 @@ const BACKUP_KEEP = Number(process.env.BACKUP_KEEP) || 14;                 // da
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';                // enables self-service registration
 const MAX_SPACES_PER_EMAIL = Number(process.env.MAX_SPACES_PER_EMAIL) || 3;  // active (not ended) spaces per organiser
 const TERMS_VERSION = '2026-11-24';
+const PUBLIC_DEMO_URL = process.env.PUBLIC_DEMO_URL || '';                // demo shown on the home page (e.g. https://…/e/K4ARN)
 const DATA_DIR = process.env.DATA_DIR || __dirname;
 const DATA_FILE = path.join(DATA_DIR, 'data.json');
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
@@ -379,7 +380,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const ip = clientIp(req);
       if (req.method === 'POST' && limited('ip:' + ip, IP_LIMIT)) return json(res, 429, { error: 'err.rate' });
-      if (req.method === 'GET' && parts[1] === 'info') return json(res, 200, { lan: lanUrls(), googleClientId: GOOGLE_CLIENT_ID || null, termsVersion: TERMS_VERSION, maxSpaces: MAX_SPACES_PER_EMAIL, freeDomains: GOOGLE_CLIENT_ID ? FREE_DOMAINS : [] });
+      if (req.method === 'GET' && parts[1] === 'info') return json(res, 200, { lan: lanUrls(), googleClientId: GOOGLE_CLIENT_ID || null, termsVersion: TERMS_VERSION, maxSpaces: MAX_SPACES_PER_EMAIL, demoUrl: PUBLIC_DEMO_URL || null, freeDomains: GOOGLE_CLIENT_ID ? FREE_DOMAINS : [] });
       // Self-service registration: Google sign-in (verified server-side), professional e-mail, terms accepted
       if (req.method === 'POST' && parts[1] === 'register') {
         if (limited('reg:' + ip, LOGIN_LIMIT)) return json(res, 429, { error: 'err.rate' });

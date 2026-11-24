@@ -193,6 +193,32 @@ function home() {
         st.admin && h('button', { class: 'btn small danger', 'aria-label': t('common.delete'), onclick: async () => { if (confirm(t('home.deleteConfirm', { title: e.title }))) { await api(`/events/${e.code}/settings`, { key: e.hostKey, delete: true }); refresh(); } } }, '🗑')));
   }
 
+  // Front door for visitors: join with a code, try the demo, open source, get a space
+  function landing() {
+    const code = h('input', { type: 'text', 'data-keep': 'lcode', placeholder: t('home.codePh'), maxlength: 5, 'aria-label': t('home.codeLabel'), autocapitalize: 'characters', autocomplete: 'off' });
+    const demo = INFO.demoUrl;
+    const requestHref = `mailto:info@orbii.tech?subject=${encodeURIComponent(t('land.mailSubject'))}&body=${encodeURIComponent(t('land.mailBody'))}`;
+    const card = (icon, title, text, actions) => h('article', { class: 'land-card' }, h('div', { class: 'land-ic', 'aria-hidden': 'true' }, icon), h('h3', {}, title), h('p', {}, text), h('div', { class: 'land-act' }, actions));
+    return h('section', { class: 'landing' },
+      h('div', { class: 'land-hero' },
+        h('h1', {}, 'Meetup Q&A'), h('p', { class: 'land-tag' }, t('land.tagline')),
+        h('form', { class: 'land-join', onsubmit: e => { e.preventDefault(); if (code.value.trim()) go('/e/' + code.value.trim().toUpperCase()); } },
+          code, h('button', { class: 'btn primary' }, t('land.join'))),
+        h('ul', { class: 'land-feats' }, ['💬 ' + t('land.f1'), '📊 ' + t('land.f2'), '📈 ' + t('land.f3'), '🗓 ' + t('land.f4')].map(x => h('li', {}, x)))),
+      h('div', { class: 'land-cards' },
+        demo && card('🎭', t('land.demoT'), t('land.demoP'), [
+          h('a', { class: 'btn primary small', href: demo + '/host' }, '🎛 ' + t('land.demoHost')),
+          h('a', { class: 'btn small', href: demo }, '👥 ' + t('land.demoGuest')),
+          h('div', { class: 'muted land-pw' }, t('land.demoPw'), ' ', h('code', {}, 'demo20272028'))]),
+        card('⭐', t('land.ossT'), t('land.ossP'), [
+          h('a', { class: 'btn small', href: 'https://github.com/pejmang/Meetup-Q-A', target: '_blank', rel: 'noopener' }, t('land.ossBtn')),
+          h('div', { class: 'muted' }, 'PolyForm Noncommercial 1.0.0')]),
+        card('✨', t('land.spaceT'), t('land.spaceP'), [
+          INFO.googleClientId ? h('button', { class: 'btn primary small', onclick: () => go('/register') }, t('reg.cta'))
+            : h('a', { class: 'btn primary small', href: requestHref }, t('land.request')),
+          h('div', { class: 'muted' }, t('land.spaceNote'))])));
+  }
+
   function draw() {
     const codeIn = h('input', { type: 'text', placeholder: t('home.codePh'), maxlength: 5, 'aria-label': t('home.codeLabel'), autocapitalize: 'characters' });
     const liveEv = st.events.filter(e => !e.ended), done = st.events.filter(e => e.ended);
@@ -264,12 +290,11 @@ function home() {
 
     document.body.classList.toggle('admin-mode', st.admin);
     $app.replaceChildren(...[st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin'))].filter(Boolean), h('div', { class: 'wrap narrow' }, top,
-      h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline')),
-        INFO.googleClientId && !st.admin && h('button', { class: 'btn primary', onclick: () => go('/register') }, '✨ ' + t('reg.cta'))),
+      st.admin ? h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline'))) : landing(),
       login, pwCard, create,
       h('h2', {}, t('home.live', { n: liveEv.length })),
       liveEv.length ? h('div', { class: 'stack' }, liveEv.map(eventCard)) : h('p', { class: 'empty' }, st.loaded ? t('home.noLive') : t('common.loading')),
-      h('form', { class: 'card row-form', onsubmit: e => { e.preventDefault(); if (codeIn.value.trim()) go('/e/' + codeIn.value.trim().toUpperCase()); } },
+      st.admin && h('form', { class: 'card row-form', onsubmit: e => { e.preventDefault(); if (codeIn.value.trim()) go('/e/' + codeIn.value.trim().toUpperCase()); } },
         codeIn, h('button', { class: 'btn' }, t('home.joinCode'))),
       st.admin && done.length > 0 && h('div', {}, h('h2', {}, t('home.endedList', { n: done.length })), h('div', { class: 'stack' }, done.map(eventCard))), brandFooter()));
   }

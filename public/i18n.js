@@ -9,6 +9,14 @@
 // Meetup Q&A v2 — translations (English / French)
 window.I18N = {
   en: {
+    'land.tagline': 'Live Q&A, polls, NPS and audience analytics for your meetups and events.', 'land.join': 'Join',
+    'land.f1': 'Live Q&A with upvotes', 'land.f2': '6 poll formats & NPS', 'land.f3': 'Live audience analytics', 'land.f4': 'Agenda & sessions',
+    'land.demoT': 'Try the live demo', 'land.demoP': 'A simulated 3-day meetup with agenda, questions, polls and analytics. Reset every 30 minutes — try everything.',
+    'land.demoHost': 'Host view', 'land.demoGuest': 'Participant view', 'land.demoPw': 'Host password:',
+    'land.ossT': 'Open source', 'land.ossP': 'Zero-dependency Node.js app you can self-host. Free for noncommercial use.', 'land.ossBtn': 'View on GitHub',
+    'land.spaceT': 'Get your event space', 'land.spaceP': 'Create a space for your meetup in a minute, with your professional e-mail.',
+    'land.request': 'Request a space', 'land.spaceNote': 'Free for noncommercial use.',
+    'land.mailSubject': 'Request an event space — Meetup Q&A', 'land.mailBody': 'Hello,\n\nI would like an event space on Meetup Q&A.\n\nOrganisation:\nEvent name:\nDate:\nExpected participants:\n\nThank you!',
     'modal.created': 'Event created!', 'modal.demoCreated': 'Demo event created!', 'modal.copy': 'Copy', 'modal.pwOnce': 'Share it with the host now: it will not be shown again.', 'demo.modalTitle': 'Demo — simulated data',
     'reg.cta': 'Create your space', 'reg.title': 'Create your space', 'reg.sub': 'Free for noncommercial use. Sign in with your professional Google account.',
     'reg.closed': 'Self-service registration is not open yet. Contact info@orbii.tech.',
@@ -172,6 +180,14 @@ window.I18N = {
     'err.limit3': 'You can send up to 3 answers', 'err.route': 'Unknown route', 'err.invalid': 'Invalid request',
   },
   fr: {
+    'land.tagline': 'Questions-réponses, sondages, NPS et analytics d\'audience en direct pour vos meetups et événements.', 'land.join': 'Rejoindre',
+    'land.f1': 'Q&A en direct avec votes', 'land.f2': '6 formats de sondage & NPS', 'land.f3': 'Analytics d\'audience en direct', 'land.f4': 'Agenda & sessions',
+    'land.demoT': 'Tester la démo', 'land.demoP': 'Un meetup simulé de 3 jours avec agenda, questions, sondages et analytics. Remise à zéro toutes les 30 minutes — testez tout.',
+    'land.demoHost': 'Vue animateur', 'land.demoGuest': 'Vue participant', 'land.demoPw': 'Mot de passe animateur :',
+    'land.ossT': 'Open source', 'land.ossP': 'Application Node.js sans dépendance, à héberger vous-même. Gratuite pour un usage non commercial.', 'land.ossBtn': 'Voir sur GitHub',
+    'land.spaceT': 'Obtenir votre espace', 'land.spaceP': 'Créez l\'espace de votre meetup en une minute, avec votre e-mail professionnel.',
+    'land.request': 'Demander un espace', 'land.spaceNote': 'Gratuit pour un usage non commercial.',
+    'land.mailSubject': 'Demande d\'espace événement — Meetup Q&A', 'land.mailBody': 'Bonjour,\n\nJe souhaite un espace événement sur Meetup Q&A.\n\nOrganisation :\nNom de l\'événement :\nDate :\nNombre de participants attendus :\n\nMerci !',
     'modal.created': 'Événement créé !', 'modal.demoCreated': 'Démo créée !', 'modal.copy': 'Copier', 'modal.pwOnce': 'Transmettez-le maintenant à l\'animateur : il ne sera plus affiché.', 'demo.modalTitle': 'Démo — données simulées',
     'reg.cta': 'Créer votre espace', 'reg.title': 'Créer votre espace', 'reg.sub': 'Gratuit pour un usage non commercial. Connectez-vous avec votre compte Google professionnel.',
     'reg.closed': 'L\'inscription en libre-service n\'est pas encore ouverte. Contactez info@orbii.tech.',
