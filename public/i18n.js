@@ -9,6 +9,11 @@
 // Meetup Q&A v2 — translations (English / French)
 window.I18N = {
   en: {
+    'stats.qVotesL': 'question votes', 'stats.pollAnswersL': 'poll answers',
+    'react.love': 'Love it', 'react.hot': 'Hot topic', 'react.insight': 'Insightful', 'react.applause': 'Applause',
+    'host.coHost': 'Co-host link', 'host.coHostCopied': 'Co-host link copied — share it with the host password', 'host.coHostHint': 'Opens the host sign-in with this event code filled in',
+    'nps.excellent': 'Excellent', 'nps.great': 'Great', 'nps.good': 'Good', 'nps.low': 'Needs work', 'nps.distribution': 'Distribution of scores from 0 to 10',
+    'poll.leading': 'leading', 'poll.multiNote': 'Percentages of respondents (several answers possible).',
     'demo.days': '{n} days',
     'act.perRes': 'Interactions per {res}', 'act.scale': 'Scale: {res} per point · {from} → {to}', 'act.scaleRecent': 'Last 2 hours, minute by minute (live)',
     'act.rangeAll': 'Whole event', 'act.rangeRecent': 'Last 2 hours (live)',
@@ -138,6 +143,11 @@ window.I18N = {
     'err.limit3': 'You can send up to 3 answers', 'err.route': 'Unknown route', 'err.invalid': 'Invalid request',
   },
   fr: {
+    'stats.qVotesL': 'votes questions', 'stats.pollAnswersL': 'réponses sondages',
+    'react.love': 'J\'adore', 'react.hot': 'Sujet chaud', 'react.insight': 'Éclairant', 'react.applause': 'Bravo',
+    'host.coHost': 'Lien co-animateur', 'host.coHostCopied': 'Lien co-animateur copié — à partager avec le mot de passe animateur', 'host.coHostHint': 'Ouvre la connexion animateur avec le code de cet événement déjà rempli',
+    'nps.excellent': 'Excellent', 'nps.great': 'Très bon', 'nps.good': 'Bon', 'nps.low': 'À améliorer', 'nps.distribution': 'Répartition des notes de 0 à 10',
+    'poll.leading': 'en tête', 'poll.multiNote': 'Pourcentages des répondants (plusieurs réponses possibles).',
     'demo.days': '{n} jours',
     'act.perRes': 'Interactions par {res}', 'act.scale': 'Échelle : {res} par point · {from} → {to}', 'act.scaleRecent': '2 dernières heures, minute par minute (direct)',
     'act.rangeAll': 'Tout l\'événement', 'act.rangeRecent': '2 dernières heures (direct)',

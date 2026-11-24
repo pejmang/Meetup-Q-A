@@ -170,9 +170,10 @@ const POLL_TYPES = ['choice', 'multi', 'wordcloud', 'rating', 'nps', 'open'];
 // An empty question means "use the default, translated question" on the client.
 const newNps = () => ({ id: uid(), type: 'nps', question: '', open: true, hidden: true, persistent: true, responses: {}, created: Date.now() });
 
-function pollView(p, isHost, cid, ev) {
+function pollView(p, isHost, cid, ev, isScreen) {
   // Hidden results are revealed when the poll closes — and for the event NPS, to each participant once they have rated it
-  const show = isHost || !p.hidden || !p.open || (p.persistent && !!cid && (p.responses || {})[cid] != null);
+  const show = isHost || !p.hidden || !p.open || (p.persistent && !!cid && (p.responses || {})[cid] != null)
+    || (isScreen && !!ev && ev.screenPoll === p.id);                 // the host chose to show it on the projection screen
   const v = { id: p.id, type: p.type, question: p.question, open: p.open, hidden: !!p.hidden, show, total: 0, draft: !!p.draft,
     persistent: !!p.persistent, onScreen: !!ev && ev.screenPoll === p.id };
   if (p.type === 'choice' || p.type === 'multi') {
@@ -244,7 +245,7 @@ function statsView(ev) {
 // Participants who rated the event NPS are rewarded with the live results and analytics
 const ratedNps = (ev, cid) => !!cid && ev.polls.some(p => p.persistent && (p.responses || {})[cid] != null);
 
-function view(ev, isHost, cid) {
+function view(ev, isHost, cid, isScreen) {
   const questions = ev.questions
     .filter(q => isHost || q.status !== 'pending' || q.cid === cid || (q.merged || []).some(m => m.cid === cid))
     .map(q => ({
@@ -258,7 +259,7 @@ function view(ev, isHost, cid) {
   return {
     code: ev.code, title: ev.title, open: ev.open, moderation: ev.moderation, host: isHost, ended: !!ev.ended, demo: !!ev.demo,
     created: ev.created, online: onlineCount(ev.code), questions, screenPoll: ev.screenPoll || null,
-    polls: ev.polls.filter(p => isHost || !p.draft).map(p => pollView(p, isHost, cid, ev)),
+    polls: ev.polls.filter(p => isHost || !p.draft).map(p => pollView(p, isHost, cid, ev, isScreen)),
     ...(isHost || ev.screenPoll === 'activity' || ratedNps(ev, cid) ? { stats: statsView(ev) } : {}),
   };
 }
@@ -271,7 +272,7 @@ function broadcast(code) {
   if (sampleOnline(ev)) save();
   for (const [res, c] of clients) {
     if (c.code !== code) continue;
-    res.write(`data: ${JSON.stringify(view(ev, c.host, c.cid))}\n\n`);
+    res.write(`data: ${JSON.stringify(view(ev, c.host, c.cid, c.screen))}\n\n`);
   }
 }
 setInterval(() => { for (const res of clients.keys()) res.write(': ping\n\n'); }, 25000).unref();
@@ -419,8 +420,9 @@ const server = http.createServer(async (req, res) => {
 
       if (req.method === 'GET' && parts[3] === 'stream') {
         res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
-        res.write(`data: ${JSON.stringify(view(ev, isHost, cid))}\n\n`);
-        clients.set(res, { code, host: isHost, cid });
+        const isScreen = url.searchParams.get('screen') === '1';
+        res.write(`data: ${JSON.stringify(view(ev, isHost, cid, isScreen))}\n\n`);
+        clients.set(res, { code, host: isHost, cid, screen: isScreen });
         if (cid && !isHost) {
           ev.participants = ev.participants || [];
           if (!ev.participants.includes(cid) && ev.participants.length < 20000) { ev.participants.push(cid); save(); }

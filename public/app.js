@@ -220,11 +220,14 @@ function home() {
 
 // ---------- Polls (shared by host, participant, screen and report) ----------
 const POLL_TYPES = ['choice', 'multi', 'wordcloud', 'rating', 'nps', 'open'];
+const REACT_KEYS = { '❤️': 'love', '🔥': 'hot', '💡': 'insight', '👏': 'applause' };
 const TYPE_ICON = { choice: '🔘', multi: '☑️', wordcloud: '☁️', rating: '⭐', nps: '📈', open: '💬' };
 const pollQ = p => p.question || t('nps.defaultQ');
 const hasAnswered = p => (p.type === 'choice' || p.type === 'multi' || p.type === 'wordcloud') ? p.mine.length > 0
   : (p.type === 'rating' || p.type === 'nps') ? p.mine != null : p.mineCount > 0;
 const pct = (n, total) => total ? Math.round(100 * n / total) : 0;
+const pct1 = (n, total) => total ? Math.round(1000 * n / total) / 10 : 0;          // 43.5 — rounding no longer adds up to 99 %
+const fmtPct = (n, total) => { const v = pct1(n, total); return (Number.isInteger(v) ? v : v.toLocaleString(LANG === 'fr' ? 'fr-FR' : 'en-GB', { minimumFractionDigits: 1 })) + (LANG === 'fr' ? ' %' : '%'); };
 const bar = (label, n, total, mine, attrs = {}) => h(attrs.onclick ? 'button' : 'div', { class: `opt ${mine ? 'mine' : ''}`, ...attrs },
   h('div', { class: 'bar', style: `width:${pct(n, total)}%` }),
   h('span', {}, h('span', {}, (mine ? '✓ ' : '') + label), n != null && h('span', {}, `${pct(n, total)}% · ${n}`)));
@@ -240,26 +243,78 @@ function wordCloud(words, big) {
   }));
 }
 
+// ----- Smart result views -----
+// Choice / multiple choice: the leading option is emphasised (🏆 + strong fill), the others stay quiet.
+function choiceBars(p, onVote) {
+  const total = p.type === 'multi' ? Math.max(1, p.total) : Math.max(1, p.counts.reduce((a, b) => a + b, 0));
+  const max = Math.max(...p.counts);
+  return h('div', { class: 'cbars' }, p.options.map((o, i) => {
+    const n = p.counts[i], pc = pct1(n, total), lead = n > 0 && n === max, mine = p.mine.includes(i);
+    return h(onVote ? 'button' : 'div', { class: `cbar ${lead ? 'lead' : ''} ${mine ? 'mine' : ''}`, ...(onVote ? { onclick: () => onVote(i) } : {}) },
+      h('div', { class: 'cbar-fill', style: `width:${pc}%` }),
+      h('span', { class: 'cbar-l' }, (mine ? '✓ ' : '') + o, lead && h('span', { class: 'cbar-lead', 'aria-label': t('poll.leading') }, ' 🏆')),
+      h('span', { class: 'cbar-v' }, h('b', {}, fmtPct(n, total)), h('small', {}, ' · ' + n)));
+  }), p.type === 'multi' && h('div', { class: 'muted cbar-note' }, t('poll.multiNote')));
+}
+
+// Rating: stars filled to the tenth + distribution on a sequential gold ramp
+function ratingView(p, big) {
+  const avg = p.avg ?? 0;
+  return h('div', { class: `rating-v ${big ? 'big' : ''}` },
+    h('div', { class: 'rating-top' },
+      h('div', { class: 'rating-avg' }, p.avg != null ? avg.toFixed(1) : '—'),
+      h('div', {}, h('div', { class: 'stars-meter', role: 'img', 'aria-label': `${avg.toFixed(1)} / 5` }, h('span', { class: 'sm-bg' }, '★★★★★'), h('span', { class: 'sm-fg', style: `width:${avg / 5 * 100}%` }, '★★★★★')),
+        h('div', { class: 'muted' }, t('poll.responses', { n: p.total })))),
+    h('div', { class: 'rating-dist' }, [5, 4, 3, 2, 1].map(v => {
+      const n = p.dist[v - 1];
+      return h('div', { class: `rd-row ${p.mine === v ? 'mine' : ''}` }, h('span', { class: 'rd-k' }, v + '★'),
+        h('div', { class: 'rd-track' }, h('div', { class: `rd-fill r${v}`, style: `width:${pct(n, p.total)}%` })), h('span', { class: 'rd-v' }, fmtPct(n, p.total)));
+    })));
+}
+
+// NPS: gauge -100…+100 with a verdict, 100% split bar and the 0–10 distribution, coloured by group
+const npsVerdict = n => n == null ? null : n >= 70 ? ['excellent', t('nps.excellent')] : n >= 30 ? ['great', t('nps.great')] : n >= 0 ? ['good', t('nps.good')] : ['low', t('nps.low')];
+function npsGauge(score, big) {
+  const W = 260, H = 150, cx = 130, cy = 128, R = 98, sw = 18;
+  const ang = v => Math.PI * (1 - (v + 100) / 200);                 // -100 → left, +100 → right
+  const pt = (v, r = R) => [cx + r * Math.cos(ang(v)), cy - r * Math.sin(ang(v))];
+  const arc = (a, b, cls) => { const [x1, y1] = pt(a), [x2, y2] = pt(b); return sv('path', { d: `M${x1.toFixed(1)} ${y1.toFixed(1)} A${R} ${R} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`, class: `g-z ${cls}`, 'stroke-width': sw }); };
+  const v = score == null ? null : Math.max(-100, Math.min(100, score));
+  const verdict = npsVerdict(score);
+  const marker = v != null && (() => { const [x, y] = pt(v); return [sv('circle', { cx: x, cy: y, r: sw / 2 + 5, class: 'g-mark' }), sv('circle', { cx: x, cy: y, r: 4, class: 'g-mark-dot' })]; })();
+  const lbl = (val, anchor) => { const [x, y] = pt(val, R); return sv('text', { x: x + (anchor === 'start' ? -sw / 2 : anchor === 'end' ? sw / 2 : 0), y: val === 0 ? y - sw / 2 - 6 : y + 16, 'text-anchor': anchor, class: 'g-tick' }, val > 0 ? '+' + val : String(val)); };
+  return h('div', { class: `nps-gauge ${big ? 'big' : ''}` },
+    sv('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `NPS ${score ?? '—'}${verdict ? ' — ' + verdict[1] : ''}` },
+      arc(-100, -1, 'z-low'), arc(1, 29, 'z-good'), arc(31, 69, 'z-great'), arc(71, 100, 'z-exc'),
+      lbl(-100, 'start'), lbl(0, 'middle'), lbl(100, 'end'), marker),
+    h('div', { class: 'g-center' }, h('div', { class: 'g-score' }, score == null ? '—' : (score > 0 ? '+' : '') + score), h('div', { class: 'g-unit' }, 'NPS'),
+      verdict && h('div', { class: `g-verdict v-${verdict[0]}` }, verdict[1])));
+}
+function npsView(p, big) {
+  const s = p.split || { promoters: 0, passives: 0, detractors: 0 };
+  const tot = Math.max(1, p.total);
+  const seg = (cls, n, emoji, label) => n > 0 && h('div', { class: `ns-seg ${cls}`, style: `flex:${n}`, title: `${label}: ${n} (${fmtPct(n, tot)})` }, pct(n, tot) >= 12 ? `${emoji} ${fmtPct(n, tot)}` : '');
+  const maxD = Math.max(1, ...(p.dist || [1]));
+  return h('div', { class: `nps-v ${big ? 'big' : ''}` },
+    npsGauge(p.nps, big),
+    h('div', { class: 'ns-bar', role: 'img', 'aria-label': `${t('poll.detractors')} ${pct(s.detractors, tot)}%, ${t('poll.passives')} ${pct(s.passives, tot)}%, ${t('poll.promoters')} ${pct(s.promoters, tot)}%` },
+      seg('det', s.detractors, '😞', t('poll.detractors')), seg('pas', s.passives, '😐', t('poll.passives')), seg('pro', s.promoters, '😍', t('poll.promoters'))),
+    h('div', { class: 'ns-legend' },
+      h('span', {}, h('i', { class: 'sw det' }), `${t('poll.detractors')} 0–6 · ${s.detractors}`),
+      h('span', {}, h('i', { class: 'sw pas' }), `${t('poll.passives')} 7–8 · ${s.passives}`),
+      h('span', {}, h('i', { class: 'sw pro' }), `${t('poll.promoters')} 9–10 · ${s.promoters}`)),
+    p.dist && h('div', { class: 'ns-dist', role: 'img', 'aria-label': t('nps.distribution') }, p.dist.map((n, v) =>
+      h('div', { class: `nd-col ${p.mine === v ? 'mine' : ''}`, title: `${v}: ${n}` },
+        h('div', { class: 'nd-track' }, h('div', { class: `nd-bar ${v <= 6 ? 'det' : v <= 8 ? 'pas' : 'pro'}`, style: `height:${Math.max(n ? 6 : 0, 100 * n / maxD)}%` })),
+        h('span', {}, String(v))))));
+}
+
 function pollResults(p, opts = {}) {
   const { big } = opts;
   if (!p.show) return h('p', { class: 'muted hidden-res' }, '🙈 ' + t('poll.hiddenUntilClose'));
-  if (p.type === 'choice' || p.type === 'multi') {
-    const total = p.type === 'multi' ? Math.max(1, ...[p.total]) : p.counts.reduce((a, b) => a + b, 0);
-    return h('div', {}, p.options.map((o, i) => bar(o, p.counts[i], total, p.mine.includes(i))));
-  }
-  if (p.type === 'rating') {
-    return h('div', {},
-      h('div', { class: `score ${big ? 'big' : ''}` }, p.avg != null ? `★ ${p.avg.toFixed(1)}` : '—', h('span', { class: 'muted' }, ' / 5')),
-      p.dist.map((n, i) => bar('★'.repeat(i + 1), n, p.total, p.mine === i + 1)).reverse());
-  }
-  if (p.type === 'nps') {
-    const s = p.split || { promoters: 0, passives: 0, detractors: 0 };
-    return h('div', {},
-      h('div', { class: `score ${big ? 'big' : ''}` }, p.nps != null ? (p.nps > 0 ? '+' : '') + p.nps : '—', h('span', { class: 'muted' }, ' NPS')),
-      bar(t('poll.promoters') + ' (9–10)', s.promoters, p.total, p.mine >= 9),
-      bar(t('poll.passives') + ' (7–8)', s.passives, p.total, p.mine === 7 || p.mine === 8),
-      bar(t('poll.detractors') + ' (0–6)', s.detractors, p.total, p.mine != null && p.mine <= 6));
-  }
+  if (p.type === 'choice' || p.type === 'multi') return choiceBars(p);
+  if (p.type === 'rating') return ratingView(p, big);
+  if (p.type === 'nps') return npsView(p, big);
   if (p.type === 'wordcloud') return wordCloud(p.words, big);
   if (p.type === 'open') {
     const list = (p.responses || []).slice(0, big ? 12 : 50);
@@ -277,10 +332,8 @@ function pollInput(p, post, ui) {
     return h('div', {}, p.type === 'multi' && h('div', { class: 'muted' }, t('poll.multiHint')),
       p.options.map((o, i) => {
         const mine = p.mine.includes(i);
-        return p.show
-          ? bar(o, p.counts[i], p.type === 'multi' ? p.total : p.counts.reduce((a, b) => a + b, 0), mine, { onclick: () => vote({ option: i }) })
-          : h('button', { class: `opt ${mine ? 'mine' : ''}`, onclick: () => vote({ option: i }) }, h('span', {}, h('span', {}, (mine ? '✓ ' : '') + o)));
-      }));
+        return h('button', { class: `opt ${mine ? 'mine' : ''}`, onclick: () => vote({ option: i }) }, h('span', {}, h('span', {}, (mine ? '✓ ' : '') + o)));
+      }).filter(() => !p.show), p.show && choiceBars(p, i => vote({ option: i })));
   }
   if (p.type === 'rating') {
     return h('div', { class: 'stars', role: 'radiogroup', 'aria-label': pollQ(p) }, [1, 2, 3, 4, 5].map(v =>
@@ -423,7 +476,7 @@ function live(code, mode) {
   if (mode === 'screen') document.body.classList.add('screen');
   if (isHost) document.body.classList.add('host-mode');
 
-  stream = new EventSource(`${BASE}/api/events/${code}/stream?cid=${cid}${hostParam}`);
+  stream = new EventSource(`${BASE}/api/events/${code}/stream?cid=${cid}${hostParam}${mode === 'screen' ? '&screen=1' : ''}`);
   stream.onmessage = e => {
     state.data = JSON.parse(e.data);
     if (isHost && !state.data.host) { safe('key:' + code, ''); toast(t('host.expired')); return go('/?host=' + code); }
@@ -460,7 +513,7 @@ function live(code, mode) {
     const voteBtn = h('button', { class: 'vote', 'aria-pressed': String(q.voted), 'aria-label': `${q.voted ? t('q.unvote') : t('q.upvote')} — ${q.votes}`,
       disabled: q.status === 'pending' || mode === 'screen', onclick: () => { q.voted = !q.voted; q.votes += q.voted ? 1 : -1; render(); post(`/questions/${q.id}/vote`, {}); } },
       h('span', { class: 'thumb', 'aria-hidden': 'true' }, '👍'), h('b', {}, q.votes));
-    const reacts = q.status === 'pending' ? null : h('div', { class: 'reacts' }, q.reacts.map(r => h('button', { class: 'react', 'aria-pressed': String(r.mine), 'aria-label': `${t('q.react')} ${r.e}`, disabled: mode === 'screen', onclick: () => post(`/questions/${q.id}/react`, { emoji: r.e }) }, r.e, r.n > 0 && h('i', {}, r.n))));
+    const reacts = q.status === 'pending' ? null : h('div', { class: 'reacts' }, q.reacts.map(r => h('button', { class: 'react', 'aria-pressed': String(r.mine), title: t('react.' + REACT_KEYS[r.e]), 'aria-label': `${t('react.' + REACT_KEYS[r.e])} (${r.n})`, disabled: mode === 'screen', onclick: () => post(`/questions/${q.id}/react`, { emoji: r.e }) }, r.e, r.n > 0 && h('i', {}, r.n))));
     const note = q.note && !(state.noteEdit && state.noteEdit.id === q.id) && h('div', { class: 'note' }, h('b', {}, '💬 ' + t('q.hostAnswer')), ' ', q.note);
     const merged = q.merged.length > 0 && mode !== 'screen' && h('details', { class: 'merged' }, h('summary', { class: 'muted' }, t('q.showMerged', { n: q.merged.length })),
       h('ul', {}, q.merged.map(m => h('li', {}, m.text, h('span', { class: 'muted' }, ' — ' + (m.author || t('q.anonymous')) + (m.mine ? ' ' + t('q.you') : ''))))));
@@ -538,8 +591,9 @@ function live(code, mode) {
       liveP.length ? liveP.map(p => pollCard(p)) : h('div', { class: 'card empty-poll' }, h('div', { class: 'big-emoji' }, '📊'), h('b', {}, t('poll.noneLive')), h('p', { class: 'muted' }, t('poll.noneLiveSub'))),
       nps && pollCard(nps),
       guestAnalytics(d),
-      past.length > 0 && h('h2', {}, t('guest.pastPolls', { n: past.length })),
-      past.map(p => pollCard(p)));
+      past.length > 0 && h('details', { class: 'card past-polls', open: state.pastOpen, ontoggle: e => state.pastOpen = e.target.open },
+        h('summary', {}, '🗂 ' + t('guest.pastPolls', { n: past.length })),
+        h('div', { class: 'stack', style: 'margin-top:10px' }, past.map(p => pollCard(p)))));
   }
 
   // ----- Question form -----
@@ -671,6 +725,9 @@ function live(code, mode) {
     const byVotes = (a, b) => (b.pinned - a.pinned) || (b.votes - a.votes) || (a.ts - b.ts);
     const byNew = (a, b) => b.ts - a.ts;
     const totalVotes = liveQ.reduce((s, q) => s + q.votes, 0);
+    // 'Top 1/2/3' always goes to the most-voted questions, whatever is pinned
+    const medalIds = [...liveQ].filter(q => q.votes > 0).sort((a, b) => (b.votes - a.votes) || (a.ts - b.ts)).slice(0, 3).map(q => q.id);
+    const medalRank = id => medalIds.indexOf(id);
 
     const tabs = isHost
       ? [['all', t('tab.all'), all.length], ['pending', t('tab.pending'), pending.length], ['top', t('tab.top'), null], ['new', t('tab.new'), null], ['answered', t('tab.answered'), answered.length], ['analytics', '📈 ' + t('an.tab'), null]]
@@ -695,14 +752,17 @@ function live(code, mode) {
       h('div', { class: 'meta' }, h('span', { class: 'online', title: t('stats.online') }, '● ' + d.online), h('span', { class: 'code' }, d.code), langBtn())));
 
     const stats = h('div', { class: 'stats' },
-      stat(liveQ.length, t('stats.questionsL')), stat(totalVotes, t('stats.votesL')), stat(answered.length, t('stats.answeredL')),
+      stat(liveQ.length, t('stats.questionsL')), stat(totalVotes, t('stats.qVotesL')),
+      stat(d.polls.filter(p => !p.draft).reduce((a, p) => a + p.total, 0), t('stats.pollAnswersL')),
       isHost ? stat(pending.length, t('stats.pendingL')) : stat(d.online, t('stats.onlineL')));
 
     let side;
     if (isHost) {
       side = h('aside', { class: 'side' },
         h('div', { class: 'card invite' }, qrEl(base), h('div', {}, h('div', { class: 'muted' }, t('host.enterCode')), h('div', { class: 'bigcode' }, d.code), h('div', { class: 'muted' }, base.replace(/^https?:\/\//, '')),
-          h('button', { class: 'btn small', style: 'margin-top:8px', onclick: () => { navigator.clipboard?.writeText(base); toast(t('host.copied')); } }, '🔗 ' + t('host.copyLink')))),
+          h('div', { class: 'row-actions', style: 'margin-top:8px' },
+            h('button', { class: 'btn small', onclick: () => { navigator.clipboard?.writeText(base); toast(t('host.copied')); } }, '🔗 ' + t('host.copyLink')),
+            h('button', { class: 'btn small', title: t('host.coHostHint'), onclick: () => { navigator.clipboard?.writeText(`${shareBase()}/?host=${d.code}`); toast(t('host.coHostCopied')); } }, '🎛 ' + t('host.coHost'))))),
         statsCard(d),
         h('details', { class: 'card tools', open: state.tools, ontoggle: e => state.tools = e.target.open },
           h('summary', {}, '⚙️ ' + t('host.settings')),
@@ -749,8 +809,9 @@ function live(code, mode) {
       viewSwitch, teaser,
       !isHost && state.view === 'polls' ? pollsPanel(d) : [
         h('div', { class: 'toolbar' }, tabBar, state.tab !== 'analytics' && search),
+        state.tab !== 'analytics' && list.length > 0 && h('div', { class: 'react-legend muted' }, Object.entries(REACT_KEYS).map(([e, k]) => h('span', {}, e + ' ' + t('react.' + k)))),
         isHost && state.tab === 'analytics' && d.stats ? analyticsPanel(d) :
-        list.length ? list.map((q, i) => qCard(q, state.tab === 'top' && !needle && q.status !== 'answered' ? i : -1)) : h('p', { class: 'empty' }, needle ? t('empty.search') : empty)]);
+        list.length ? list.map(q => qCard(q, state.tab === 'top' && !needle ? medalRank(q.id) : -1)) : h('p', { class: 'empty' }, needle ? t('empty.search') : empty)]);
 
     const fab = !isHost && d.open && h('button', { class: 'fab', onclick: () => { state.sheet = true; render(); setTimeout(() => document.querySelector('[data-keep="qs"]')?.focus(), 50); } }, '✍️ ' + t('ask.title'));
     const sheet = !isHost && d.open && state.sheet && h('div', { class: 'sheet-bg', onclick: e => { if (e.target === e.currentTarget) { state.sheet = false; render(); } } },
