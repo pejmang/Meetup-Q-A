@@ -18,6 +18,9 @@ services:
       DEMO_RESET_MIN: ${DEMO_RESET_MIN:-30}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       MAX_SPACES_PER_EMAIL: ${MAX_SPACES_PER_EMAIL:-3}
+      REQUIRE_PRO_EMAIL: ${REQUIRE_PRO_EMAIL:-}
+      PUBLIC_DEMO_URL: ${PUBLIC_DEMO_URL:-}
+      PUBLIC_DEMOS: ${PUBLIC_DEMOS:-}
     volumes:
       - qa-data:/data
 volumes:

@@ -84,12 +84,12 @@ function openModal(content, { label } = {}) {
 function copyBtn(text, label) {
   return h('button', { type: 'button', class: 'btn small copy', onclick: e => { navigator.clipboard?.writeText(text); const b = e.currentTarget; b.textContent = '✓ ' + t('host.copied'); setTimeout(() => { b.textContent = '📋 ' + (label || t('modal.copy')); }, 1600); } }, '📋 ' + (label || t('modal.copy')));
 }
-function createdModal({ code, hostKey, hostPassword, title, demo }) {
+function createdModal({ code, hostKey, hostPassword, title, demo, heading, icon }) {
   const guestUrl = `${shareBase()}/e/${code}`, hostUrl = `${shareBase()}/e/${code}/host`;
   const all = `${title}\n${t('screen.code')}: ${code}\n${t('login.hostPw')}: ${hostPassword}\n${t('reg.guestLink')}: ${guestUrl}\n${t('reg.hostLink')}: ${hostUrl}`;
   openModal(close => h('div', { class: 'created' },
-    h('div', { class: 'created-head' }, h('div', { class: 'created-burst', 'aria-hidden': 'true' }, demo ? '🎭' : '🎉'),
-      h('h2', {}, demo ? t('modal.demoCreated') : t('modal.created')), h('p', { class: 'muted' }, title)),
+    h('div', { class: 'created-head' }, h('div', { class: 'created-burst', 'aria-hidden': 'true' }, icon || (demo ? '🎭' : '🎉')),
+      h('h2', {}, heading || (demo ? t('modal.demoCreated') : t('modal.created'))), h('p', { class: 'muted' }, title)),
     h('div', { class: 'created-grid' },
       h('div', { class: 'created-code' }, h('span', { class: 'muted' }, t('screen.code')), h('b', {}, code), qrEl(guestUrl)),
       h('div', { class: 'stack' },
@@ -142,6 +142,7 @@ function route() {
     return live(code, p[2] === 'screen' ? 'screen' : p[2] === 'host' ? 'host' : 'guest');
   }
   if (p[0] === 'register') return registerPage();
+  if (p[0] === 'my') return mySpacesPage();
   if (p[0] === 'terms') return termsPage();
   home();
 }
@@ -155,7 +156,7 @@ function home() {
   document.title = 'Meetup Q&A';
   clearInterval(homeTimer);
   const hostParam = new URLSearchParams(location.search).get('host');
-  const st = { events: [], admin: false, login: !!hostParam, loginMode: 'host', hostCode: (hostParam || '').toUpperCase(), loaded: false, newTitle: '', newPw: genPw(), newMod: false };
+  const st = { events: [], admin: false, login: !!hostParam, loginMode: 'host', hostCode: (hostParam || '').toUpperCase(), loaded: false, newTitle: '', newPw: genPw(), newMod: false, newCompany: '', find: '' };
   const token = () => safe('adminToken') || '';
   const onHome = () => appPath() === '/';
 
@@ -174,6 +175,7 @@ function home() {
     if (st.admin && e.pending) bits.push('⏳ ' + t('home.toModerate', { n: e.pending }));
     if (st.admin && !e.hasHostPassword) bits.push('⚠ ' + t('home.noHostPw'));
     if (st.admin && e.owner) bits.push('👤 ' + e.owner.email);
+    if (e.company) bits.unshift('🏢 ' + e.company);
     if (e.ended) bits.push(t('home.ended')); else if (!e.open) bits.push(t('home.qClosed'));
     return h('div', { class: `card ev ${e.ended ? 'ended' : ''}` },
       h('div', { class: 'ev-main' }, h('b', {}, e.demo && h('span', { class: 'tag demo' }, t('demo.badge')), ' ', e.title), h('div', { class: 'muted' }, bits.join(' · ')), h('span', { class: 'code' }, e.code)),
@@ -182,6 +184,7 @@ function home() {
         !st.admin && h('button', { class: 'btn small', onclick: () => { st.login = true; st.loginMode = 'host'; st.hostCode = e.code; draw(); document.querySelector('[data-keep="pwd"]')?.focus(); } }, '🎛 ' + t('home.host')),
         st.admin && h('button', { class: 'btn small', onclick: () => { safe('key:' + e.code, e.hostKey); go(`/e/${e.code}/host`); } }, '🎛 ' + t('home.manage')),
         st.admin && h('a', { class: 'btn small', href: `${BASE}/api/events/${e.code}/export.csv?key=${encodeURIComponent(e.hostKey)}&sep=${LANG === 'fr' ? ';' : ','}` }, '⬇ CSV'),
+        st.admin && h('button', { class: 'btn small', title: t('create.company'), onclick: async () => { const c = prompt(t('create.companyPrompt', { title: e.title }), e.company || ''); if (c == null) return; await api(`/events/${e.code}/settings`, { key: e.hostKey, company: c }); refresh(); } }, '🏢'),
         st.admin && e.publicDemo && h('button', { class: 'btn small', onclick: async () => { if (confirm(t('demo.resetConfirm'))) { await api(`/events/${e.code}/demo-reset`, {}); toast('↺ ' + t('demo.resetDone')); refresh(); } } }, '↺ ' + t('demo.reset')),
         st.admin && h('button', { class: 'btn small', onclick: async () => {
           const pw = prompt(t('home.newHostPwPrompt', { title: e.title }), genPw());
@@ -193,40 +196,103 @@ function home() {
         st.admin && h('button', { class: 'btn small danger', 'aria-label': t('common.delete'), onclick: async () => { if (confirm(t('home.deleteConfirm', { title: e.title }))) { await api(`/events/${e.code}/settings`, { key: e.hostKey, delete: true }); refresh(); } } }, '🗑')));
   }
 
+  // Front door for visitors: join with a code, try the demo, open source, get a space
+  // Find your space: search by name, company or code in a scrollable list
+  function findSpace() {
+    const liveEv = st.events.filter(e => !e.ended);
+    const q = st.find.trim().toLowerCase();
+    const list = q ? liveEv.filter(e => [e.title, e.company, e.code].some(x => String(x || '').toLowerCase().includes(q))) : liveEv;
+    const search = h('input', { type: 'search', 'data-keep': 'find', placeholder: t('find.ph'), 'aria-label': t('find.title'), value: st.find,
+      oninput: e => { st.find = e.target.value; const box = document.querySelector('.find-list'); if (box) box.replaceWith(rows()); const n = document.querySelector('.find-count'); if (n) n.textContent = count(); } });
+    const count = () => t('find.count', { n: (st.find.trim() ? liveEv.filter(e => [e.title, e.company, e.code].some(x => String(x || '').toLowerCase().includes(st.find.trim().toLowerCase()))) : liveEv).length });
+    function rows() {
+      const qq = st.find.trim().toLowerCase();
+      const items = qq ? liveEv.filter(e => [e.title, e.company, e.code].some(x => String(x || '').toLowerCase().includes(qq))) : liveEv;
+      return h('div', { class: 'find-list', role: 'list' }, items.length ? items.map(e => h('button', { class: 'find-row', role: 'listitem', onclick: () => go('/e/' + e.code) },
+        h('span', { class: 'find-main' }, h('b', {}, e.title), h('span', { class: 'find-sub' }, e.company ? '🏢 ' + e.company : (e.demo ? '🎭 ' + t('find.demo') : ''))),
+        h('span', { class: 'find-code' }, e.code))) : h('p', { class: 'muted find-empty' }, st.loaded ? t('find.none') : t('common.loading')));
+    }
+    return h('section', { class: 'find' },
+      h('div', { class: 'find-head' }, h('h2', {}, '🔎 ' + t('find.title')), h('span', { class: 'find-count' }, count())),
+      search, rows());
+  }
+
+  function landing() {
+    const code = h('input', { type: 'text', 'data-keep': 'lcode', placeholder: t('home.codePh'), maxlength: 5, 'aria-label': t('home.codeLabel'), autocapitalize: 'characters', autocomplete: 'off' });
+    const demos = INFO.demos || [];
+    const requestHref = `mailto:info@orbii.tech?subject=${encodeURIComponent(t('land.mailSubject'))}&body=${encodeURIComponent(t('land.mailBody'))}`;
+    const card = (cls, icon, title, text, actions) => h('article', { class: `land-card ${cls}` }, h('div', { class: 'land-ic', 'aria-hidden': 'true' }, icon), h('h3', {}, title), h('p', {}, text), h('div', { class: 'land-act' }, actions));
+    return h('section', { class: 'landing' },
+      h('div', { class: 'land-hero' },
+        h('div', { class: 'land-copy' },
+          h('span', { class: 'land-kicker' }, '✨ ' + t('land.kicker')),
+          h('h1', {}, 'Meetup ', h('span', {}, 'Q&A')), h('p', { class: 'land-tag' }, t('land.tagline')),
+          h('form', { class: 'land-join', onsubmit: e => { e.preventDefault(); if (code.value.trim()) go('/e/' + code.value.trim().toUpperCase()); } },
+            code, h('button', { class: 'btn' }, t('land.join') + ' →')),
+          h('ul', { class: 'land-feats' }, ['💬 ' + t('land.f1'), '📊 ' + t('land.f2'), '📈 ' + t('land.f3'), '🗓 ' + t('land.f4')].map(x => h('li', {}, x)))),
+        findSpace()),
+      h('div', { class: 'land-cards' },
+        demos.length > 0 && card('c-demo', '🎭', t('land.demoT'), t('land.demoP'), [
+          demos.map(dm => h('div', { class: 'land-demo' }, h('b', {}, dm.title),
+            h('div', { class: 'land-act' }, h('a', { class: 'btn primary small', href: dm.url + '/host' }, '🎛 ' + t('land.demoHost')), h('a', { class: 'btn small', href: dm.url }, '👥 ' + t('land.demoGuest'))))),
+          h('div', { class: 'muted land-pw' }, t('land.demoPw'), ' ', h('code', {}, 'demo20272028'))]),
+        card('c-oss', '⭐', t('land.ossT'), t('land.ossP'), [
+          h('a', { class: 'btn small', href: 'https://github.com/pejmang/Meetup-Q-A', target: '_blank', rel: 'noopener' }, t('land.ossBtn')),
+          h('div', { class: 'muted' }, 'PolyForm Noncommercial 1.0.0')]),
+        card('c-space', '✨', t('land.spaceT'), t('land.spaceP'), [
+          INFO.googleClientId ? [h('button', { class: 'btn primary small', onclick: () => go('/register') }, t('reg.cta')), link('/my', '🗂 ' + t('my.title'), { class: 'btn small' })]
+            : h('a', { class: 'btn primary small', href: requestHref }, t('land.request')),
+          h('div', { class: 'muted' }, t('land.spaceNote'))])));
+  }
+
   function draw() {
     const codeIn = h('input', { type: 'text', placeholder: t('home.codePh'), maxlength: 5, 'aria-label': t('home.codeLabel'), autocapitalize: 'characters' });
     const liveEv = st.events.filter(e => !e.ended), done = st.events.filter(e => e.ended);
     const pwLabel = st.loginMode === 'admin' ? t('login.adminPw') : t('login.hostPw');
-    const pwd = h('input', { type: 'password', 'data-keep': 'pwd', placeholder: pwLabel, 'aria-label': pwLabel, autocomplete: 'current-password', style: fieldStyle });
-    const hostCodeIn = h('input', { type: 'text', 'data-keep': 'hcode', placeholder: t('home.codePh'), 'aria-label': t('home.codeLabel'), maxlength: 5, autocapitalize: 'characters', value: st.hostCode, style: fieldStyle, oninput: e => st.hostCode = e.target.value });
+    const pwd = h('input', { type: st.showPw ? 'text' : 'password', 'data-keep': 'pwd', id: 'lg-pw', placeholder: t('login.pwPh'), autocomplete: 'current-password' });
+    const hostCodeIn = h('input', { type: 'text', 'data-keep': 'hcode', id: 'lg-code', class: 'lg-code', placeholder: 'K7M2P', maxlength: 5, autocapitalize: 'characters', autocomplete: 'off', value: st.hostCode, oninput: e => st.hostCode = e.target.value });
     const titleIn = h('input', { type: 'text', 'data-keep': 'ntitle', placeholder: t('create.titlePh'), maxlength: 80, 'aria-label': t('create.titleLabel'), value: st.newTitle, oninput: e => st.newTitle = e.target.value });
     const hostPwIn = h('input', { type: 'text', 'data-keep': 'npw', placeholder: t('create.hostPwPh'), maxlength: 64, 'aria-label': t('create.hostPwLabel'), autocomplete: 'off', value: st.newPw, oninput: e => st.newPw = e.target.value });
     const mod = h('input', { type: 'checkbox', checked: st.newMod, onchange: e => st.newMod = e.target.checked });
+    const companyIn = h('input', { type: 'text', 'data-keep': 'ncomp', placeholder: t('create.companyPh'), maxlength: 80, 'aria-label': t('create.company'), value: st.newCompany, oninput: e => st.newCompany = e.target.value });
 
-    const top = h('div', { class: 'between hometop' }, BASE ? h('span', { class: 'tag beta' }, 'staging ' + BASE.slice(1)) : h('span', {}),
+    const top = h('div', { class: 'between hometop' }, h('span', {}),
       h('div', { class: 'between' },
         st.admin
           ? [h('span', { class: 'role admin' }, t('home.adminSignedIn')), h('button', { class: 'btn small', onclick: () => { st.pwForm = !st.pwForm; draw(); document.querySelector('[data-keep="apw0"]')?.focus(); } }, '🔑 ' + t('apw.button')), h('button', { class: 'btn small', onclick: () => { safe('adminToken', ''); st.admin = false; refresh(); } }, t('home.signOut'))]
-          : h('button', { class: 'btn small', onclick: () => { st.login = !st.login; draw(); document.querySelector('[data-keep="pwd"]')?.focus(); } }, '🔐 ' + t('home.signIn')),
+          : h('button', { class: 'btn small', onclick: () => { st.login = !st.login; draw(); document.querySelector(st.loginMode === 'host' && !st.hostCode ? '#lg-code' : '#lg-pw')?.focus(); } }, '🔐 ' + t('home.signIn')),
         langBtn()));
 
-    const login = !st.admin && st.login && h('form', { class: 'card stack', onsubmit: async e => {
-      e.preventDefault();
-      try {
-        if (st.loginMode === 'admin') {
-          const r = await api('/login', { password: pwd.value }); safe('adminToken', r.token); st.login = false; refresh();
-        } else {
-          const c = hostCodeIn.value.trim().toUpperCase();
-          if (!c) { toast(t('login.enterCode')); return hostCodeIn.focus(); }
-          const r = await api(`/events/${c}/host-login`, { password: pwd.value });
-          safe('key:' + c, r.hostKey); go(`/e/${c}/host`);
-        }
-      } catch { pwd.select(); }
-    } },
-      h('div', { class: 'tabs', role: 'tablist' }, [['host', '🎛 ' + t('login.tabHost')], ['admin', '🔐 ' + t('login.tabAdmin')]].map(([k, label]) =>
-        h('button', { type: 'button', class: 'tab', role: 'tab', 'aria-selected': String(st.loginMode === k), onclick: () => { st.loginMode = k; draw(); document.querySelector('[data-keep="pwd"]')?.focus(); } }, label))),
-      h('div', { class: 'muted' }, st.loginMode === 'admin' ? t('login.adminHint') : t('login.hostHint')),
-      st.loginMode === 'host' && hostCodeIn, pwd, h('button', { class: 'btn primary' }, t('login.submit')));
+    const closeLogin = () => { st.login = false; st.showPw = false; draw(); };
+    const login = !st.admin && st.login && h('div', { class: 'drawer-bg', onclick: e => { if (e.target === e.currentTarget) closeLogin(); } },
+      h('aside', { class: 'drawer', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'lg-title' },
+        h('div', { class: 'drawer-head' },
+          h('div', {}, h('div', { class: 'drawer-ic', 'aria-hidden': 'true' }, st.loginMode === 'admin' ? '🔐' : '🎛'),
+            h('h2', { id: 'lg-title' }, t('login.title')), h('p', { class: 'muted' }, st.loginMode === 'admin' ? t('login.adminHint') : t('login.hostHint'))),
+          h('button', { class: 'modal-x', 'aria-label': t('common.close'), onclick: closeLogin }, '✕')),
+        h('div', { class: 'seg', role: 'tablist' }, [['host', '🎛 ' + t('login.tabHost')], ['admin', '🔐 ' + t('login.tabAdmin')]].map(([k, label]) =>
+          h('button', { type: 'button', role: 'tab', 'aria-selected': String(st.loginMode === k), onclick: () => { st.loginMode = k; draw(); document.querySelector(k === 'host' && !st.hostCode ? '#lg-code' : '#lg-pw')?.focus(); } }, label))),
+        h('form', { class: 'drawer-form', onsubmit: async e => {
+          e.preventDefault();
+          try {
+            if (st.loginMode === 'admin') {
+              const r = await api('/login', { password: pwd.value }); safe('adminToken', r.token); st.login = false; refresh();
+            } else {
+              const c = hostCodeIn.value.trim().toUpperCase();
+              if (!c) { toast(t('login.enterCode')); return hostCodeIn.focus(); }
+              const r = await api(`/events/${c}/host-login`, { password: pwd.value });
+              safe('key:' + c, r.hostKey); st.login = false; go(`/e/${c}/host`);
+            }
+          } catch { pwd.select(); }
+        } },
+          st.loginMode === 'host' && h('label', { class: 'fld', for: 'lg-code' }, h('span', {}, t('home.codeLabel')), hostCodeIn),
+          h('label', { class: 'fld', for: 'lg-pw' }, h('span', {}, st.loginMode === 'admin' ? t('login.adminPw') : t('login.hostPw')),
+            h('div', { class: 'pw-wrap' }, pwd, h('button', { type: 'button', class: 'pw-eye', 'aria-label': t(st.showPw ? 'login.hidePw' : 'login.showPw'), onclick: () => { st.showPw = !st.showPw; const v = pwd.value; draw(); const n = document.querySelector('#lg-pw'); n.value = v; n.focus(); } }, st.showPw ? '🙈' : '👁'))),
+          h('button', { class: 'btn primary block lg-submit' }, t('login.submit') + ' →')),
+        st.loginMode === 'host' && INFO.googleClientId && [
+          h('div', { class: 'or' }, h('span', {}, t('login.or'))),
+          link('/my', h('span', {}, h('b', {}, 'G'), ' ', t('login.google')), { class: 'btn block g-btn' }),
+          h('p', { class: 'muted small-note' }, t('login.googleNote'))]));
 
     const pwIn = (k, ph, ac) => h('input', { type: 'password', 'data-keep': k, placeholder: ph, 'aria-label': ph, autocomplete: ac, style: fieldStyle });
     const [cur, nw, cf] = [pwIn('apw0', t('apw.current'), 'current-password'), pwIn('apw1', t('apw.new'), 'new-password'), pwIn('apw2', t('apw.confirm'), 'new-password')];
@@ -245,35 +311,87 @@ function home() {
       e.preventDefault();
       const pw = st.newPw.trim();
       const title = titleIn.value.trim();
-      const r = await api('/events', { title, moderation: mod.checked, hostPassword: pw });
+      const r = await api('/events', { title, company: st.newCompany, moderation: mod.checked, hostPassword: pw });
       safe('key:' + r.code, r.hostKey);
-      st.newTitle = ''; st.newPw = genPw(); st.newMod = false;
+      st.newTitle = ''; st.newPw = genPw(); st.newMod = false; st.newCompany = '';
       refresh();
       createdModal({ code: r.code, hostKey: r.hostKey, hostPassword: pw, title });
-    } }, h('h2', { style: 'margin:0' }, '➕ ' + t('create.title')), titleIn,
+    } }, h('h2', { style: 'margin:0' }, '➕ ' + t('create.title')), titleIn, companyIn,
       h('div', { class: 'muted' }, t('create.hostPwHint')), hostPwIn,
       h('label', { class: 'row' }, mod, t('create.moderate')), h('button', { class: 'btn primary' }, t('create.submit')),
       h('div', { class: 'demo-row' }, h('span', { class: 'muted' }, '🎭 ' + t('demo.create')),
-        [['en', 1], ['fr', 1], ['en', 3]].map(([l, days]) => h('button', { type: 'button', class: 'btn small', onclick: async () => {
+        [['en', 1], ['fr', 1], ['en', 3], ['en', 1, 'townhall']].map(([l, days, scenario]) => h('button', { type: 'button', class: 'btn small', onclick: async () => {
           const pw = st.newPw.trim();
-          const r = await api('/events/demo', { lang: l, hostPassword: pw, days });
+          const r = await api('/events/demo', { lang: l, hostPassword: pw, days, scenario });
           safe('key:' + r.code, r.hostKey); st.newPw = genPw();
           refresh();
           createdModal({ code: r.code, hostKey: r.hostKey, hostPassword: pw, title: t('demo.modalTitle'), demo: true });
-        } }, (l === 'en' ? '🇬🇧 English' : '🇫🇷 Français') + (days > 1 ? ' · ' + t('demo.days', { n: days }) : '')))));
+        } }, scenario === 'townhall' ? '🏢 Townhall · 1,200' : (l === 'en' ? '🇬🇧 English' : '🇫🇷 Français') + (days > 1 ? ' · ' + t('demo.days', { n: days }) : '')))));
 
     document.body.classList.toggle('admin-mode', st.admin);
-    $app.replaceChildren(...[st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin'))].filter(Boolean), h('div', { class: 'wrap narrow' }, top,
-      h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline')),
-        INFO.googleClientId && !st.admin && h('button', { class: 'btn primary', onclick: () => go('/register') }, '✨ ' + t('reg.cta'))),
-      login, pwCard, create,
-      h('h2', {}, t('home.live', { n: liveEv.length })),
-      liveEv.length ? h('div', { class: 'stack' }, liveEv.map(eventCard)) : h('p', { class: 'empty' }, st.loaded ? t('home.noLive') : t('common.loading')),
-      h('form', { class: 'card row-form', onsubmit: e => { e.preventDefault(); if (codeIn.value.trim()) go('/e/' + codeIn.value.trim().toUpperCase()); } },
+    $app.replaceChildren(...[st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin'))].filter(Boolean), h('div', { class: `wrap ${st.admin ? 'narrow' : 'home-wide'}` }, top,
+      st.admin ? h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline'))) : landing(),
+      pwCard, create,
+      st.admin && h('h2', {}, t('home.live', { n: liveEv.length })),
+      st.admin && (liveEv.length ? h('div', { class: 'stack' }, liveEv.map(eventCard)) : h('p', { class: 'empty' }, st.loaded ? t('home.noLive') : t('common.loading'))),
+      st.admin && h('form', { class: 'card row-form', onsubmit: e => { e.preventDefault(); if (codeIn.value.trim()) go('/e/' + codeIn.value.trim().toUpperCase()); } },
         codeIn, h('button', { class: 'btn' }, t('home.joinCode'))),
-      st.admin && done.length > 0 && h('div', {}, h('h2', {}, t('home.endedList', { n: done.length })), h('div', { class: 'stack' }, done.map(eventCard))), brandFooter()));
+      st.admin && done.length > 0 && h('div', {}, h('h2', {}, t('home.endedList', { n: done.length })), h('div', { class: 'stack' }, done.map(eventCard))), brandFooter()), ...(login ? [login] : []));
   }
+  const onKey = e => { if (!onHome()) return document.removeEventListener('keydown', onKey); if (e.key === 'Escape' && st.login) { st.login = false; draw(); } };
+  document.addEventListener('keydown', onKey);
   draw(); refresh(); infoReady.then(() => { if (onHome()) draw(); });
+  if (st.login) setTimeout(() => document.querySelector(st.hostCode ? '#lg-pw' : '#lg-code')?.focus(), 80);
+}
+
+// ---------- Google sign-in (Google Identity Services) ----------
+function googleSignIn(el, onCredential) {
+  const init = () => {
+    window.google.accounts.id.initialize({ client_id: INFO.googleClientId, callback: r => onCredential(r.credential), ux_mode: 'popup' });
+    window.google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', locale: LANG });
+  };
+  if (window.google && window.google.accounts) return init();
+  if (!document.getElementById('gsi')) document.head.append(h('script', { id: 'gsi', src: 'https://accounts.google.com/gsi/client', async: true, onload: () => init() }));
+  else document.getElementById('gsi').addEventListener('load', init);
+}
+
+// ---------- My spaces (organisers, via Google) ----------
+function mySpacesPage() {
+  document.title = t('my.title') + ' — Meetup Q&A';
+  const st = { cred: null, data: null, busy: false };
+  const load = async () => { st.busy = true; draw(); try { st.data = await api('/my-spaces', { credential: st.cred }); } catch { st.cred = null; } st.busy = false; draw(); };
+  function draw() {
+    const wrap = h('div', { class: 'wrap narrow my' },
+      h('div', { class: 'between hometop' }, link('/', '← ' + t('common.home')), langBtn()),
+      h('div', { class: 'hero' }, h('h1', {}, '🗂 ' + t('my.title')), h('p', { class: 'muted' }, t('my.sub'))));
+    if (!INFO.googleClientId) { wrap.append(h('div', { class: 'card' }, '🔒 ' + t('reg.closed')), brandFooter()); return $app.replaceChildren(wrap); }
+    if (!st.data) {
+      const gb = h('div', { class: 'gbtn' });
+      wrap.append(h('div', { class: 'card stack' }, h('b', {}, t('my.signIn')), h('p', { class: 'muted', style: 'margin:0' }, t('my.signInHint')), st.busy ? h('p', {}, t('common.loading')) : gb));
+      if (!st.busy) setTimeout(() => googleSignIn(gb, c => { st.cred = c; load(); }), 0);
+    } else {
+      const sp = st.data.spaces;
+      wrap.append(h('div', { class: 'reg-who ok' }, '✅ ', h('b', {}, st.data.name || ''), ' ', st.data.email),
+        sp.length ? h('div', { class: 'stack', style: 'margin-top:12px' }, sp.map(x => h('article', { class: `card ev ${x.ended ? 'ended' : ''}` },
+          h('div', { class: 'ev-main' }, h('b', {}, x.title), h('div', { class: 'muted' }, t('home.stats', { q: x.questions, o: x.online }) + (x.ended ? ' · ' + t('home.ended') : '')), h('span', { class: 'code' }, x.code)),
+          h('div', { class: 'row-actions', style: 'margin:0' },
+            h('button', { class: 'btn primary small', onclick: () => { safe('key:' + x.code, x.hostKey); go(`/e/${x.code}/host`); } }, '🎛 ' + t('reg.openHost')),
+            h('button', { class: 'btn small', onclick: async () => {
+              if (!confirm(t('my.newPwConfirm', { title: x.title }))) return;
+              try {
+                const r = await api('/my-password', { credential: st.cred, code: x.code });
+                safe('key:' + r.code, r.hostKey); x.hostKey = r.hostKey;
+                createdModal({ code: r.code, hostKey: r.hostKey, hostPassword: r.hostPassword, title: r.title, heading: t('my.newPwDone'), icon: '🔑' });
+              } catch (e) { if (/regToken/.test(String(e && e.message))) { st.data = null; st.cred = null; draw(); } }
+            } }, '🔑 ' + t('my.newPw'))))))
+          : h('div', { class: 'card', style: 'margin-top:12px' }, t('my.none'), ' ', link('/register', '✨ ' + t('reg.cta'))),
+        h('div', { class: 'row-actions', style: 'justify-content:center;margin-top:14px' }, link('/register', '✨ ' + t('reg.cta'), { class: 'btn small' })));
+    }
+    wrap.append(brandFooter());
+    $app.replaceChildren(wrap);
+  }
+  draw();
+  infoReady.then(() => { if (!st.data && !st.busy) draw(); });
 }
 
 // ---------- Self-service registration ----------
@@ -281,20 +399,12 @@ function registerPage() {
   document.title = t('reg.title') + ' — Meetup Q&A';
   const st = { cred: null, who: null, title: '', moderate: false, accept: false, done: null, busy: false };
   const decode = jwt => { try { return JSON.parse(decodeURIComponent(escape(atob(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))); } catch { return null; } };
-  const isPro = email => { const d = String(email || '').toLowerCase().split('@')[1] || ''; return !!d && !(INFO.freeDomains || []).includes(d); };
-  function googleButton(el) {
-    const init = () => {
-      window.google.accounts.id.initialize({ client_id: INFO.googleClientId, callback: r => { st.cred = r.credential; st.who = decode(r.credential); draw(); }, ux_mode: 'popup' });
-      window.google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', locale: LANG });
-    };
-    if (window.google && window.google.accounts) return init();
-    if (!document.getElementById('gsi')) document.head.append(h('script', { id: 'gsi', src: 'https://accounts.google.com/gsi/client', async: true, onload: () => init() }));
-    else document.getElementById('gsi').addEventListener('load', init);
-  }
+  const isPro = email => { const d = String(email || '').toLowerCase().split('@')[1] || ''; return !!d && !(INFO.freeDomains || []).includes(d); };   // freeDomains is empty unless REQUIRE_PRO_EMAIL=1
+  const googleButton = el => googleSignIn(el, c => { st.cred = c; st.who = decode(c); draw(); });
   function draw() {
     const wrap = h('div', { class: 'wrap narrow reg' },
       h('div', { class: 'between hometop' }, link('/', '← ' + t('common.home')), langBtn()),
-      h('div', { class: 'hero' }, h('h1', {}, '✨ ' + t('reg.title')), h('p', { class: 'muted' }, t('reg.sub'))));
+      h('div', { class: 'hero' }, h('h1', {}, '✨ ' + t('reg.title')), h('p', { class: 'muted' }, t('reg.sub')), h('p', { class: 'muted' }, t('my.already'), ' ', link('/my', '🗂 ' + t('my.title')))));
     if (!INFO.googleClientId) { wrap.append(h('div', { class: 'card' }, '🔒 ' + t('reg.closed')), brandFooter()); return $app.replaceChildren(wrap); }
     if (st.done) {
       const hostUrl = `${shareBase()}/e/${st.done.code}/host`, guestUrl = `${shareBase()}/e/${st.done.code}`;
@@ -303,7 +413,7 @@ function registerPage() {
         h('h2', { style: 'margin:0' }, '🎉 ' + t('reg.doneTitle')),
         h('div', { class: 'kv' }, h('span', { class: 'muted' }, t('screen.code')), h('b', { class: 'bigcode' }, st.done.code)),
         h('div', { class: 'kv' }, h('span', { class: 'muted' }, t('login.hostPw')), h('b', { class: 'pw' }, st.done.hostPassword)),
-        h('div', { class: 'banner' }, '⚠️ ' + t('reg.savePw')),
+        h('div', { class: 'banner' }, '⚠️ ' + t('reg.savePw'), ' ', t('my.reminder')),
         h('div', { class: 'muted' }, t('reg.hostLink') + ' : ', h('a', { href: hostUrl }, hostUrl)),
         h('div', { class: 'muted' }, t('reg.guestLink') + ' : ', h('a', { href: guestUrl }, guestUrl)),
         h('div', { class: 'row-actions' },
@@ -326,12 +436,13 @@ function registerPage() {
         if (!st.accept) return toast(t('err.regTerms'));
         st.busy = true; draw();
         try {
-          const r = await api('/register', { credential: st.cred, title: st.title, moderation: st.moderate, acceptTerms: st.accept, termsVersion: INFO.termsVersion });
+          const r = await api('/register', { credential: st.cred, title: st.title, company: st.company || '', moderation: st.moderate, acceptTerms: st.accept, termsVersion: INFO.termsVersion });
           st.done = r; safe('key:' + r.code, r.hostKey);
         } catch (err) { if (/regToken|regEmailUnverified/.test(String(err && err.message))) { st.who = null; st.cred = null; } }   // sign in again
         st.busy = false; draw();
       } },
         h('b', {}, '2. ' + t('reg.step2')), titleIn,
+        h('input', { type: 'text', 'data-keep': 'rc', maxlength: 80, placeholder: t('create.companyPh'), 'aria-label': t('create.company'), value: st.company || '', oninput: e => st.company = e.target.value }),
         h('label', { class: 'row' }, h('input', { type: 'checkbox', checked: st.moderate, onchange: e => st.moderate = e.target.checked }), t('create.moderate')),
         h('label', { class: 'row reg-terms' }, h('input', { type: 'checkbox', checked: st.accept, required: true, onchange: e => st.accept = e.target.checked }),
           h('span', {}, t('reg.accept1'), ' ', h('a', { href: BASE + '/terms', target: '_blank' }, t('reg.termsLink')), ' ', t('reg.accept2'))),
@@ -509,7 +620,7 @@ function sv(tag, attrs = {}, ...kids) {
   for (const k of kids.flat(Infinity)) if (k != null && k !== false) el.append(k.nodeType ? k : document.createTextNode(k));
   return el;
 }
-const niceMax = v => { if (v <= 4) return 4; const p = Math.pow(10, Math.floor(Math.log10(v))); const n = v / p; return (n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; };
+const niceMax = v => { if (v <= 4) return 4; const p = Math.pow(10, Math.floor(Math.log10(v))); const n = v / p; return [1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(x => n <= x) * p; };   // 1,152 → 1,200 (not 2,000)
 
 function activityKpis(s) {
   const eng = s.participants ? Math.round(100 * s.activeUsers / s.participants) : 0;

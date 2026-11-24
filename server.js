@@ -13,7 +13,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
-const { buildDemo } = require('./demo');
+const { buildDemo, buildTownhall } = require('./demo');
+const buildScenario = cfg => (cfg.scenario === 'townhall' ? buildTownhall : buildDemo)(cfg);
 const { verifyGoogleIdToken, isProEmail, FREE_DOMAINS } = require('./register');
 
 // ---------- Configuration ----------
@@ -31,7 +32,11 @@ const IP_LIMIT = Number(process.env.IP_LIMIT_PER_MIN) || 600;              // al
 const BACKUP_KEEP = Number(process.env.BACKUP_KEEP) || 14;                 // daily backups kept
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';                // enables self-service registration
 const MAX_SPACES_PER_EMAIL = Number(process.env.MAX_SPACES_PER_EMAIL) || 3;  // active (not ended) spaces per organiser
+const REQUIRE_PRO_EMAIL = process.env.REQUIRE_PRO_EMAIL === '1';           // off by default: any verified Google account can register
 const TERMS_VERSION = '2026-11-24';
+// Demos shown on the home page: PUBLIC_DEMOS="Title|https://…/e/CODE;Title|https://…/e/CODE" (or a single PUBLIC_DEMO_URL)
+const PUBLIC_DEMOS = String(process.env.PUBLIC_DEMOS || '').split(';').map(x => x.split('|').map(y => y.trim())).filter(([t, u]) => t && /^https?:\/\//.test(u || '')).map(([title, url]) => ({ title, url }));
+if (!PUBLIC_DEMOS.length && process.env.PUBLIC_DEMO_URL) PUBLIC_DEMOS.push({ title: 'Demo', url: process.env.PUBLIC_DEMO_URL });
 const DATA_DIR = process.env.DATA_DIR || __dirname;
 const DATA_FILE = path.join(DATA_DIR, 'data.json');
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
@@ -280,7 +285,7 @@ function view(ev, isHost, cid, isScreen) {
       reacts: EMOJIS.map(e => ({ e, n: (q.reacts?.[e] || []).length, mine: (q.reacts?.[e] || []).includes(cid) })),
     }));
   return {
-    code: ev.code, title: ev.title, open: ev.open, moderation: ev.moderation, host: isHost, ended: !!ev.ended, demo: !!ev.demo,
+    code: ev.code, title: ev.title, company: ev.company || '', open: ev.open, moderation: ev.moderation, host: isHost, ended: !!ev.ended, demo: !!ev.demo,
     created: ev.created, online: onlineCount(ev.code), questions, screenPoll: ev.screenPoll || null,
     sessions: sessionsOf(ev), screenSessionOnly: !!ev.screenSessionOnly,
     ...(isPublicDemo(ev) ? { publicDemo: true, demoResetAt: ev.demoResetAt || null, demoResetMin: DEMO_RESET_MIN } : {}),
@@ -379,14 +384,14 @@ const server = http.createServer(async (req, res) => {
     try {
       const ip = clientIp(req);
       if (req.method === 'POST' && limited('ip:' + ip, IP_LIMIT)) return json(res, 429, { error: 'err.rate' });
-      if (req.method === 'GET' && parts[1] === 'info') return json(res, 200, { lan: lanUrls(), googleClientId: GOOGLE_CLIENT_ID || null, termsVersion: TERMS_VERSION, maxSpaces: MAX_SPACES_PER_EMAIL, freeDomains: GOOGLE_CLIENT_ID ? FREE_DOMAINS : [] });
+      if (req.method === 'GET' && parts[1] === 'info') return json(res, 200, { lan: lanUrls(), googleClientId: GOOGLE_CLIENT_ID || null, termsVersion: TERMS_VERSION, maxSpaces: MAX_SPACES_PER_EMAIL, demos: PUBLIC_DEMOS, freeDomains: GOOGLE_CLIENT_ID && REQUIRE_PRO_EMAIL ? FREE_DOMAINS : [] });
       // Self-service registration: Google sign-in (verified server-side), professional e-mail, terms accepted
       if (req.method === 'POST' && parts[1] === 'register') {
         if (limited('reg:' + ip, LOGIN_LIMIT)) return json(res, 429, { error: 'err.rate' });
         const b = await body(req);
         let who;
         try { who = await verifyGoogleIdToken(b.credential, GOOGLE_CLIENT_ID); } catch (e) { return json(res, 401, { error: /^err\./.test(e.message) ? e.message : 'err.regToken' }); }
-        if (!isProEmail(who.email)) return json(res, 403, { error: 'err.regProEmail' });
+        if (REQUIRE_PRO_EMAIL && !isProEmail(who.email)) return json(res, 403, { error: 'err.regProEmail' });
         if (b.acceptTerms !== true || b.termsVersion !== TERMS_VERSION) return json(res, 400, { error: 'err.regTerms' });
         const title = clean(b.title, 80);
         if (title.length < 3) return json(res, 400, { error: 'err.title' });
@@ -394,7 +399,7 @@ const server = http.createServer(async (req, res) => {
         const code = newCode();
         const hostKey = crypto.randomBytes(12).toString('hex');
         const hostPassword = Array.from(crypto.randomBytes(10), x => 'abcdefghjkmnpqrstuvwxyz23456789'[x % 31]).join('');
-        events[code] = { code, title, hostKey, hostPass: hashPw(hostPassword), open: true, moderation: !!b.moderation,
+        events[code] = { code, title, company: clean(b.company, 80), hostKey, hostPass: hashPw(hostPassword), open: true, moderation: !!b.moderation,
           questions: [], polls: [], created: Date.now(), participants: [], peakOnline: 0, activity: {},
           owner: { ...who, acceptedTerms: TERMS_VERSION, acceptedAt: Date.now() } };
         events[code].polls.push(newNps());
@@ -419,11 +424,34 @@ const server = http.createServer(async (req, res) => {
         setAdminPassword(next);
         return json(res, 200, { ok: true, token: adminToken() });
       }
+      // Organisers: Google sign-in gives access to the spaces they own (no password needed), and lets them
+      // generate a new host password (old one stops working, co-hosts using it are signed out)
+      if (req.method === 'POST' && (parts[1] === 'my-spaces' || parts[1] === 'my-password')) {
+        if (limited('reg:' + ip, LOGIN_LIMIT * 3)) return json(res, 429, { error: 'err.rate' });
+        const b = await body(req);
+        let who;
+        try { who = await verifyGoogleIdToken(b.credential, GOOGLE_CLIENT_ID); } catch (e) { return json(res, 401, { error: /^err\./.test(e.message) ? e.message : 'err.regToken' }); }
+        const owns = e => !!e.owner && (e.owner.sub === who.sub || (!e.owner.sub && e.owner.email === who.email));
+        if (parts[1] === 'my-spaces') {
+          const list = Object.values(events).filter(owns).sort((a, b) => b.created - a.created)
+            .map(e => ({ code: e.code, title: e.title, created: e.created, ended: !!e.ended, open: e.open, hostKey: e.hostKey,
+              questions: e.questions.filter(q => q.status !== 'pending').length, online: onlineCount(e.code) }));
+          return json(res, 200, { email: who.email, name: who.name, spaces: list });
+        }
+        const ev = events[String(b.code || '').toUpperCase()];
+        if (!ev || !owns(ev)) return json(res, 403, { error: 'err.notOwner' });
+        const hostPassword = Array.from(crypto.randomBytes(10), x => 'abcdefghjkmnpqrstuvwxyz23456789'[x % 31]).join('');
+        ev.hostPass = hashPw(hostPassword);
+        ev.hostKey = crypto.randomBytes(12).toString('hex');
+        for (const [r, c] of clients) if (c.code === ev.code && c.host) { r.end(); clients.delete(r); }
+        save();
+        return json(res, 200, { code: ev.code, title: ev.title, hostPassword, hostKey: ev.hostKey });
+      }
       // Event list (public; admin also receives host keys)
       if (req.method === 'GET' && parts.length === 2 && parts[1] === 'events') {
         const admin = okToken(url.searchParams.get('token'));
         const list = Object.values(events).filter(e => admin || !e.ended).sort((a, b) => b.created - a.created).map(e => ({
-          code: e.code, title: e.title, open: e.open, ended: !!e.ended, created: e.created, demo: !!e.demo,
+          code: e.code, title: e.title, company: e.company || '', open: e.open, ended: !!e.ended, created: e.created, demo: !!e.demo,
           questions: e.questions.filter(q => q.status !== 'pending').length,
           online: onlineCount(e.code),
           ...(admin ? { owner: e.owner ? { email: e.owner.email, name: e.owner.name, acceptedAt: e.owner.acceptedAt } : null, publicDemo: isPublicDemo(e), hostKey: e.hostKey, hasHostPassword: !!e.hostPass, pending: e.questions.filter(q => q.status === 'pending').length } : {}),
@@ -438,8 +466,8 @@ const server = http.createServer(async (req, res) => {
         if (hostPassword.length < 4 || hostPassword.length > 64) return json(res, 400, { error: 'err.hostPw' });
         const code = newCode();
         const hostKey = crypto.randomBytes(12).toString('hex');
-        const demoCfg = { lang: b.lang === 'fr' ? 'fr' : 'en', days: Math.min(5, Math.max(1, Number(b.days) || 1)) };
-        events[code] = { ...buildDemo({ ...demoCfg, code, hostKey, hostPass: hashPw(hostPassword), uid }), demoCfg };
+        const demoCfg = { lang: b.lang === 'fr' ? 'fr' : 'en', days: Math.min(5, Math.max(1, Number(b.days) || 1)), scenario: b.scenario === 'townhall' ? 'townhall' : 'meetup' };
+        events[code] = { ...buildScenario({ ...demoCfg, code, hostKey, hostPass: hashPw(hostPassword), uid }), demoCfg };
         save();
         return json(res, 200, { code, hostKey });
       }
@@ -453,7 +481,7 @@ const server = http.createServer(async (req, res) => {
         if (hostPassword.length < 4 || hostPassword.length > 64) return json(res, 400, { error: 'err.hostPw' });
         const code = newCode();
         const hostKey = crypto.randomBytes(12).toString('hex');
-        events[code] = { code, title, hostKey, hostPass: hashPw(hostPassword), open: true, moderation: !!b.moderation,
+        events[code] = { code, title, company: clean(b.company, 80), hostKey, hostPass: hashPw(hostPassword), open: true, moderation: !!b.moderation,
           questions: [], polls: [], created: Date.now(), participants: [], peakOnline: 0, activity: {} };
         if (b.nps !== false) events[code].polls.push(newNps());
         save();
@@ -606,6 +634,8 @@ const server = http.createServer(async (req, res) => {
         if (typeof b.moderation === 'boolean') ev.moderation = b.moderation;
         if (typeof b.screenActivity === 'boolean') ev.screenPoll = b.screenActivity ? 'activity' : null;
         if (typeof b.screenSessionOnly === 'boolean') ev.screenSessionOnly = b.screenSessionOnly;
+        if (typeof b.company === 'string') ev.company = clean(b.company, 80);
+        if (typeof b.title === 'string' && clean(b.title, 80).length >= 3) ev.title = clean(b.title, 80);
         if (b.approveAll) ev.questions.forEach(q => { if (q.status === 'pending') q.status = 'live'; });
       }
       // Agenda: create / update / delete / reorder / status (host only)
@@ -746,7 +776,7 @@ const server = http.createServer(async (req, res) => {
 function resetDemo(code) {
   const ev = events[code]; if (!isPublicDemo(ev)) return;
   const demoCfg = ev.demoCfg || { lang: 'en', days: 1 };
-  events[code] = { ...buildDemo({ ...demoCfg, code, hostKey: ev.hostKey, hostPass: ev.hostPass, uid }), demoCfg, demoResetAt: Date.now() + DEMO_RESET_MIN * MIN };
+  events[code] = { ...buildScenario({ ...demoCfg, code, hostKey: ev.hostKey, hostPass: ev.hostPass, uid }), demoCfg, demoResetAt: Date.now() + DEMO_RESET_MIN * MIN };
   save(); broadcast(code);
 }
 for (const ev of Object.values(events)) if (isPublicDemo(ev)) {

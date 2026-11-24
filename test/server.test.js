@@ -77,6 +77,8 @@ test('admin login + event creation with host password', async () => {
   assert.equal(r.status, 200);
   ({ code, hostKey } = r.body);
   const h = await post(`/events/${code}/host-login`, { password: 'host1234' });
+  await post(`/events/${code}/settings`, { token, company: 'ACME Corp' });
+  assert.equal((await get('/events')).body.events.find(e => e.code === code).company, 'ACME Corp', 'company shown in the public list (find your space)');
   assert.equal(h.body.hostKey, hostKey);
 });
 
@@ -232,6 +234,9 @@ test('simulated demo event: admin only, complete and consistent', async () => {
   const reset = (await get(`/events/${dc}?key=${dk}`)).body;
   assert.equal(reset.questions.length, pv.questions.length, 'content restored');
   assert.equal(reset.sessions.length, 3, 'agenda restored');
+  assert.equal(reset.title, pv.title, 'title unchanged by repeated resets');
+  await post(`/events/${dc}/demo-reset`, { token });
+  assert.equal((await get(`/events/${dc}?key=${dk}`)).body.title, pv.title);
   assert.equal((await post(`/events/${dc}/host-login`, { password: 'demo1234' })).body.hostKey, dk, 'same code and host password after reset');
   await stop(proc); proc = await start({});
   assert.equal((await post(`/events/${r.body.code}/settings`, { token, delete: true })).status, 200);
@@ -298,12 +303,13 @@ test('agenda: sessions CRUD, one live at a time, max 20, questions per session, 
   await post(`${Q}/${qa.id}/action`, { key: hostKey, action: 'delete' });
 });
 
-test('self-service registration: Google sign-in verified server-side, pro e-mail only, terms required, 3 spaces max', async () => {
+test('self-service registration: Google sign-in verified server-side, any verified account, terms required, 3 spaces max', async () => {
   const info = (await get('/info')).body;
   assert.equal(info.googleClientId, 'test-client');
   const reg = (credential, extra = {}) => post('/register', { credential, title: 'Team meetup', acceptTerms: true, termsVersion: info.termsVersion, ...extra });
-  assert.equal((await reg(googleToken({ email: 'bob@gmail.com' }))).body.error, 'err.regProEmail', 'Gmail refused');
-  assert.equal((await reg(googleToken({ email: 'bob@free.fr' }))).body.error, 'err.regProEmail', 'Free refused');
+  const gm = await reg(googleToken({ email: 'bob@gmail.com', sub: 'gm' }));
+  assert.equal(gm.status, 200, 'any verified Google account (Gmail included) can register by default');
+  await post(`/events/${gm.body.code}/settings`, { token, delete: true });
   assert.equal((await reg(googleToken({ email: 'alice@acme.io', aud: 'someone-else' }))).status, 401, 'token for another app refused');
   assert.equal((await reg(googleToken({ email: 'alice@acme.io', exp: 1000 }))).status, 401, 'expired token refused');
   assert.equal((await reg(googleToken({ email: 'alice@acme.io', email_verified: false }))).body.error, 'err.regEmailUnverified');
@@ -322,6 +328,19 @@ test('self-service registration: Google sign-in verified server-side, pro e-mail
   assert.equal((await get('/events')).body.events.find(e => e.code === ok.body.code).owner, undefined, 'owner hidden from the public list');
   await reg(googleToken({ email: 'alice@acme.io' })); await reg(googleToken({ email: 'alice@acme.io' }));
   assert.equal((await reg(googleToken({ email: 'alice@acme.io' }))).body.error, 'err.regMax', 'max 3 active spaces per organiser');
+  // organisers access their spaces with Google (no password) and can generate a new host password
+  const mine = await post('/my-spaces', { credential: googleToken({ email: 'alice@acme.io' }) });
+  assert.equal(mine.status, 200);
+  assert.equal(mine.body.spaces.length, 3, 'lists only the spaces of this Google account');
+  assert.ok(mine.body.spaces[0].hostKey, 'gives host access without the password');
+  assert.equal((await post('/my-spaces', { credential: googleToken({ email: 'eve@other.io', sub: 'eve' }) })).body.spaces.length, 0, 'another account sees nothing');
+  assert.equal((await post('/my-spaces', { credential: googleToken({ email: 'alice@acme.io' }, { key: forged }) })).status, 401, 'forged token refused');
+  const sp = mine.body.spaces.find(x => x.code === ok.body.code);
+  assert.equal((await post('/my-password', { credential: googleToken({ email: 'eve@other.io', sub: 'eve' }), code: sp.code })).status, 403, 'not the owner');
+  const np = await post('/my-password', { credential: googleToken({ email: 'alice@acme.io' }), code: sp.code });
+  assert.equal(np.status, 200);
+  assert.equal((await post(`/events/${sp.code}/host-login`, { password: ok.body.hostPassword })).status, 401, 'old host password no longer works');
+  assert.equal((await post(`/events/${sp.code}/host-login`, { password: np.body.hostPassword })).body.hostKey, np.body.hostKey, 'new password works');
   for (const e of (await get(`/events?token=${token}`)).body.events.filter(e => e.owner)) await post(`/events/${e.code}/settings`, { token, delete: true });
 });
 
