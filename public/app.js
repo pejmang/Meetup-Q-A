@@ -518,6 +518,7 @@ function live(code, mode) {
     const setOpt = (i, v) => { P.options[i] = v; };
     const presets = [[t('preset.yes'), t('preset.no')], [t('preset.yes'), t('preset.no'), t('preset.dontKnow')], ['A', 'B', 'C', 'D']];
     return h('div', { class: 'stack', style: 'margin-top:10px' },
+      P.editing && h('div', { class: 'banner' }, '✏️ ' + t('pollf.editing')),
       h('div', { class: 'type-grid', role: 'radiogroup', 'aria-label': t('pollf.type') }, POLL_TYPES.map(ty =>
         h('button', { type: 'button', class: 'type-card', role: 'radio', 'aria-checked': String(P.type === ty), onclick: () => { P.type = ty; render(); } },
           h('span', { class: 'ti' }, TYPE_ICON[ty]), h('b', {}, t('ptype.' + ty)), h('span', { class: 'muted' }, t('pdesc.' + ty))))),
@@ -532,11 +533,36 @@ function live(code, mode) {
           P.options.length < 8 && h('button', { type: 'button', class: 'btn small', onclick: () => { P.options.push(''); render(); } }, '＋ ' + t('pollf.addOption')),
           presets.map(pr => h('button', { type: 'button', class: 'btn small chip', onclick: () => { P.options = [...pr]; render(); } }, pr.join(' / '))))),
       h('label', { class: 'row' }, h('input', { type: 'checkbox', checked: P.hidden, onchange: e => P.hidden = e.target.checked }), t('pollf.hidden')),
-      h('button', { class: 'btn primary', onclick: async () => {
-        await post('/polls', { type: P.type, question: P.question, options: needsOptions ? P.options : [], hidden: P.hidden });
-        state.poll = { type: P.type, question: '', options: ['', ''], hidden: false }; toast('🚀 ' + t('pollf.launched')); render();
-      } }, '🚀 ' + t('pollf.publish')),
+      (() => {
+        const payload = () => ({ type: P.type, question: P.question, options: needsOptions ? P.options : [], hidden: P.hidden });
+        const reset = () => { state.poll = { type: P.type, question: '', options: ['', ''], hidden: false }; render(); };
+        if (P.editing) {
+          const id = P.editing;
+          return h('div', { class: 'row-actions', style: 'margin:0' },
+            h('button', { class: 'btn primary', onclick: async () => { await post(`/polls/${id}/action`, { action: 'edit', ...payload() }); toast('💾 ' + t('pollf.saved')); reset(); } }, '💾 ' + t('pollf.saveChanges')),
+            h('button', { class: 'btn', onclick: async () => { await post(`/polls/${id}/action`, { action: 'edit', ...payload() }); await post(`/polls/${id}/action`, { action: 'launch' }); toast('🚀 ' + t('pollf.launched')); reset(); } }, '🚀 ' + t('pollf.saveLaunch')),
+            h('button', { class: 'btn', onclick: reset }, t('common.cancel')));
+        }
+        return h('div', { class: 'row-actions', style: 'margin:0' },
+          h('button', { class: 'btn primary', onclick: async () => { await post('/polls', payload()); toast('🚀 ' + t('pollf.launched')); reset(); } }, '🚀 ' + t('pollf.publish')),
+          h('button', { class: 'btn', onclick: async () => { await post('/polls', { ...payload(), draft: true }); toast('💾 ' + t('pollf.drafted')); reset(); } }, '💾 ' + t('pollf.saveDraft')));
+      })(),
       !hasNps && h('button', { class: 'btn small', onclick: () => post('/polls', { persistent: true }) }, '📈 ' + t('pollf.addNps')));
+  }
+
+  // ----- Host: polls prepared in advance -----
+  function draftsCard(d) {
+    const drafts = d.polls.filter(p => p.draft);
+    if (!drafts.length) return null;
+    return h('div', { class: 'card drafts' },
+      h('div', { class: 'between' }, h('b', {}, '📋 ' + t('drafts.title', { n: drafts.length })), h('span', { class: 'muted' }, t('drafts.hint'))),
+      h('ol', { class: 'draft-list' }, drafts.map(p => h('li', { class: state.poll.editing === p.id ? 'editing' : '' },
+        h('div', { class: 'draft-main' }, h('span', { class: 'tag' }, TYPE_ICON[p.type] + ' ' + t('ptype.' + p.type)), p.hidden && h('span', { class: 'tag' }, '🙈'),
+          h('div', { class: 'draft-q' }, pollQ(p)), p.options && h('div', { class: 'muted' }, p.options.join(' · '))),
+        h('div', { class: 'row-actions', style: 'margin:6px 0 0' },
+          h('button', { class: 'btn small primary', onclick: async () => { await post(`/polls/${p.id}/action`, { action: 'launch' }); toast('🚀 ' + t('pollf.launched')); } }, '▶ ' + t('drafts.launch')),
+          h('button', { class: 'btn small', onclick: () => { state.poll = { type: p.type, question: p.question, options: p.options ? [...p.options] : ['', ''], hidden: p.hidden, editing: p.id }; state.tools = true; render(); document.querySelector('[data-keep="pq"]')?.focus(); } }, '✏️ ' + t('drafts.edit')),
+          h('button', { class: 'btn small danger', 'aria-label': t('common.delete'), onclick: () => confirm(t('poll.deleteConfirm')) && post(`/polls/${p.id}/action`, { action: 'delete' }) }, '🗑'))))));
   }
 
   // ----- Host: stats + exports -----
@@ -615,8 +641,9 @@ function live(code, mode) {
               h('button', { class: 'btn small', onclick: () => { if (d.ended || confirm(t('host.endConfirm'))) post('/settings', { ended: !d.ended }); } }, d.ended ? t('home.reopen') : '🏁 ' + t('host.end'))))),
         statsCard(d),
         h('details', { class: 'card tools', open: state.tools },
-          h('summary', {}, '📊 ' + t('host.newPoll')), pollForm(d)),
-        d.polls.map(pollCard));
+          h('summary', {}, '📊 ' + (state.poll.editing ? t('pollf.editTitle') : t('host.newPoll'))), pollForm(d)),
+        draftsCard(d),
+        d.polls.filter(p => !p.draft).map(p => pollCard(p)));
     } else {
       side = h('aside', { class: 'side' },
         d.open
@@ -727,8 +754,8 @@ async function report(code) {
       h('div', { class: 'muted' }, [q.author || t('q.anonymous'), q.status === 'answered' ? '✓ ' + t('q.answered') : null, q.pinned ? '📌 ' + t('q.pinned') : null].filter(Boolean).join(' · ')),
       q.note && h('div', { class: 'note' }, h('b', {}, '💬 ' + t('q.hostAnswer')), ' ', q.note),
       q.merged.length > 0 && h('div', { class: 'muted' }, '🔗 ' + t('q.mergedN', { n: q.merged.length }) + ': ' + q.merged.map(m => '« ' + m.text + ' »').join(' · '))))) : h('p', { class: 'muted' }, t('empty.all')),
-    h('h2', {}, t('report.polls', { n: d.polls.length })),
-    d.polls.length ? d.polls.map(p => h('section', { class: 'card poll' }, h('div', { class: 'poll-h' }, h('span', { class: 'tag' }, TYPE_ICON[p.type] + ' ' + t('ptype.' + p.type)), h('b', {}, pollQ(p))),
+    h('h2', {}, t('report.polls', { n: d.polls.filter(p => !p.draft).length })),
+    d.polls.some(p => !p.draft) ? d.polls.filter(p => !p.draft).map(p => h('section', { class: 'card poll' }, h('div', { class: 'poll-h' }, h('span', { class: 'tag' }, TYPE_ICON[p.type] + ' ' + t('ptype.' + p.type)), h('b', {}, pollQ(p))),
       pollResults(p), h('div', { class: 'muted', style: 'margin-top:6px' }, t('poll.responses', { n: p.total })))) : h('p', { class: 'muted' }, t('report.noPolls')),
     h('p', { class: 'muted foot' }, t('report.generated', { date: fmtDate(Date.now()) }))));
 }

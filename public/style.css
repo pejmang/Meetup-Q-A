@@ -332,3 +332,12 @@ body.screen { --c-online: #4f7fd1; --c-active: #b38d36; }
 .report-page .kpi:first-child { display: none; }
 .report-page .kpis { grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 600px) { .report-page .kpis { grid-template-columns: repeat(2, 1fr); } }
+
+/* ===== v2.0 — prepared polls ===== */
+.drafts { border-style: dashed; }
+.draft-list { margin: 8px 0 0; padding-left: 20px; }
+.draft-list li { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.draft-list li:last-child { border-bottom: 0; }
+.draft-list li.editing { background: var(--hl); border-radius: 8px; padding: 8px; }
+.draft-main .tag { margin-bottom: 3px; }
+.draft-q { font-weight: 600; overflow-wrap: anywhere; }

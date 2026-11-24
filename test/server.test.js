@@ -145,6 +145,27 @@ test('event-long NPS: created by default, stays open when other polls launch, on
   assert.equal(v.stats.nps, -100);
 });
 
+test('prepared polls: hidden from participants, editable, launched in one click', async () => {
+  const P = `/events/${code}/polls`;
+  await post(P, { key: hostKey, type: 'choice', question: 'Draft Q', options: ['A', 'B'], draft: true });
+  let host = (await get(`/events/${code}?key=${hostKey}`)).body;
+  const draft = host.polls.find(p => p.draft);
+  assert.ok(draft && draft.open === false);
+  const openBefore = host.polls.find(p => p.open && !p.persistent && !p.draft);
+  assert.ok(openBefore, 'creating a draft does not close the live poll');
+  assert.equal((await get(`/events/${code}?cid=g`)).body.polls.some(p => p.id === draft.id), false, 'invisible to participants');
+  assert.equal((await post(`${P}/${draft.id}/vote`, { cid: 'g', option: 0 })).status, 400, 'cannot vote on a draft');
+  assert.equal((await post(`${P}/${draft.id}/action`, { key: hostKey, action: 'edit', type: 'multi', question: 'Edited', options: ['X', 'Y', 'Z'] })).status, 200);
+  assert.equal((await post(`${P}/${draft.id}/action`, { key: hostKey, action: 'launch' })).status, 200);
+  host = (await get(`/events/${code}?key=${hostKey}`)).body;
+  const launched = host.polls[0];
+  assert.equal(launched.id, draft.id);
+  assert.deepEqual([launched.question, launched.type, launched.open, launched.draft], ['Edited', 'multi', true, false]);
+  assert.equal(host.polls.filter(p => p.open && !p.persistent).length, 1, 'previous live poll closed');
+  assert.ok(host.polls.find(p => p.persistent).open, 'event NPS stays open');
+  assert.equal((await post(`${P}/${draft.id}/action`, { key: hostKey, action: 'launch' })).status, 400, 'launch only once');
+});
+
 test('1.1 CSV export (host only) and 1.5 stats', async () => {
   assert.equal((await get(`/events/${code}/export.csv`)).status, 403);
   const r = await get(`/events/${code}/export.csv?key=${hostKey}&sep=;`);

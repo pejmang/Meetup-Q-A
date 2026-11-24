@@ -136,7 +136,7 @@ const newNps = () => ({ id: uid(), type: 'nps', question: '', open: true, hidden
 
 function pollView(p, isHost, cid, ev) {
   const show = isHost || !p.hidden || !p.open;                  // hidden results are revealed when the poll closes
-  const v = { id: p.id, type: p.type, question: p.question, open: p.open, hidden: !!p.hidden, show, total: 0,
+  const v = { id: p.id, type: p.type, question: p.question, open: p.open, hidden: !!p.hidden, show, total: 0, draft: !!p.draft,
     persistent: !!p.persistent, onScreen: !!ev && ev.screenPoll === p.id };
   if (p.type === 'choice' || p.type === 'multi') {
     v.options = p.options.map(o => o.label);
@@ -196,7 +196,7 @@ function statsView(ev) {
     questions: live.length, answered: live.filter(q => q.status === 'answered').length,
     votes: live.reduce((s, q) => s + q.voters.length, 0),
     reactions: live.reduce((s, q) => s + Object.values(q.reacts || {}).reduce((a, r) => a + r.length, 0), 0),
-    polls: ev.polls.length, pollResponses,
+    polls: ev.polls.filter(p => !p.draft).length, pollResponses,
     ...(() => { const n = ev.polls.find(p => p.persistent); if (!n) return {}; const v = pollView(n, true, ''); return { nps: v.nps ?? null, npsResponses: v.total }; })(),
     peak: { ts: peakA.t, n: peakA.n }, timeline,
     created: ev.created, endedAt: ev.endedAt || null,
@@ -216,7 +216,7 @@ function view(ev, isHost, cid) {
   return {
     code: ev.code, title: ev.title, open: ev.open, moderation: ev.moderation, host: isHost, ended: !!ev.ended,
     created: ev.created, online: onlineCount(ev.code), questions, screenPoll: ev.screenPoll || null,
-    polls: ev.polls.map(p => pollView(p, isHost, cid, ev)),
+    polls: ev.polls.filter(p => isHost || !p.draft).map(p => pollView(p, isHost, cid, ev)),
     ...(isHost || ev.screenPoll === 'activity' ? { stats: statsView(ev) } : {}),
   };
 }
@@ -250,6 +250,7 @@ function csv(ev, sep) {
     (q.merged || []).map(m => m.text).join(' | '), ...EMOJIS.map(e => (q.reacts?.[e] || []).length), iso(q.ts)])));
   out.push('', row(['Poll', 'Type', 'Answer', 'Count']));
   for (let p of ev.polls) {
+    if (p.draft) continue;
     const v = pollView(p, true, '');
     if (p.persistent) p = { ...p, question: 'Event NPS' };
     if (v.options) v.options.forEach((o, i) => out.push(row([p.question, p.type, o, v.counts[i]])));
@@ -478,11 +479,17 @@ const server = http.createServer(async (req, res) => {
         const question = clean(b.question, 140);
         const opts = (Array.isArray(b.options) ? b.options : []).map(o => clean(o, 60)).filter(Boolean).slice(0, 8);
         if (!question || ((type === 'choice' || type === 'multi') && opts.length < 2)) return json(res, 400, { error: 'err.pollInvalid' });
-        ev.polls.forEach(p => { if (!p.persistent) p.open = false; });
-        const poll = { id: uid(), type, question, open: true, hidden: !!b.hidden, created: Date.now() };
+        const poll = { id: uid(), type, question, open: !b.draft, hidden: !!b.hidden, created: Date.now() };
         if (type === 'choice' || type === 'multi') poll.options = opts.map(label => ({ label, voters: [] }));
         else poll.responses = (type === 'rating' || type === 'nps') ? {} : [];
-        ev.polls.unshift(poll);
+        if (b.draft) {                                          // prepared in advance: invisible to participants until launched
+          poll.draft = true;
+          const at = ev.polls.findIndex(p => p.persistent);
+          if (at < 0) ev.polls.push(poll); else ev.polls.splice(at, 0, poll);
+        } else {
+          ev.polls.forEach(p => { if (!p.persistent) p.open = false; });
+          ev.polls.unshift(poll);
+        }
       }
       // Polls: respond
       else if (parts[3] === 'polls' && parts[5] === 'vote') {
@@ -516,7 +523,24 @@ const server = http.createServer(async (req, res) => {
         if (!hostOk) return json(res, 403, { error: 'err.hostOnly' });
         const p = ev.polls.find(x => x.id === parts[4]);
         if (!p) return json(res, 404, { error: 'err.pollNotFound' });
+        if ((b.action === 'toggle' || b.action === 'screen') && p.draft) return json(res, 400, { error: 'err.action' });
         if (b.action === 'toggle') { if (!p.open && !p.persistent) ev.polls.forEach(x => { if (!x.persistent) x.open = false; }); p.open = !p.open; }
+        else if (b.action === 'launch') {
+          if (!p.draft) return json(res, 400, { error: 'err.action' });
+          ev.polls.forEach(x => { if (!x.persistent && !x.draft) x.open = false; });
+          p.draft = false; p.open = true; p.created = Date.now();
+          ev.polls = [p, ...ev.polls.filter(x => x !== p)];
+        }
+        else if (b.action === 'edit') {
+          if (!p.draft) return json(res, 400, { error: 'err.action' });
+          const question = clean(b.question, 140);
+          const type = POLL_TYPES.includes(b.type) ? b.type : p.type;
+          const opts = (Array.isArray(b.options) ? b.options : []).map(o => clean(o, 60)).filter(Boolean).slice(0, 8);
+          if (!question || ((type === 'choice' || type === 'multi') && opts.length < 2)) return json(res, 400, { error: 'err.pollInvalid' });
+          p.type = type; p.question = question; p.hidden = !!b.hidden;
+          if (type === 'choice' || type === 'multi') { p.options = opts.map(label => ({ label, voters: [] })); delete p.responses; }
+          else { delete p.options; p.responses = (type === 'rating' || type === 'nps') ? {} : []; }
+        }
         else if (b.action === 'reveal') p.hidden = !p.hidden;
         else if (b.action === 'screen') ev.screenPoll = ev.screenPoll === p.id ? null : p.id;
         else if (b.action === 'delete') { ev.polls = ev.polls.filter(x => x !== p); if (ev.screenPoll === p.id) ev.screenPoll = null; }

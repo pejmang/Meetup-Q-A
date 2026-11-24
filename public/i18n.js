@@ -9,6 +9,9 @@
 // Meetup Q&A v2 — translations (English / French)
 window.I18N = {
   en: {
+    'pollf.saveDraft': 'Prepare for later', 'pollf.drafted': 'Poll saved in prepared polls', 'pollf.saveChanges': 'Save changes', 'pollf.saveLaunch': 'Save & launch',
+    'pollf.saved': 'Changes saved', 'pollf.editing': 'Editing a prepared poll', 'pollf.editTitle': 'Edit prepared poll',
+    'drafts.title': 'Prepared polls ({n})', 'drafts.hint': 'Invisible to participants', 'drafts.launch': 'Launch', 'drafts.edit': 'Edit',
     'act.now': 'Connected now', 'act.peak': 'Peak at the same time', 'act.at': 'at {time}', 'act.total': 'People connected (total)',
     'act.active': 'Active participants', 'act.engagement': '{n}% engagement', 'act.interactions': 'Interactions', 'act.peakAct': 'peak {n}/min at {time}',
     'act.noData': 'No activity yet.', 'act.people': 'People', 'act.perMin': 'Interactions per minute',
@@ -122,6 +125,9 @@ window.I18N = {
     'err.limit3': 'You can send up to 3 answers', 'err.route': 'Unknown route', 'err.invalid': 'Invalid request',
   },
   fr: {
+    'pollf.saveDraft': 'Préparer pour plus tard', 'pollf.drafted': 'Sondage ajouté aux sondages préparés', 'pollf.saveChanges': 'Enregistrer', 'pollf.saveLaunch': 'Enregistrer et lancer',
+    'pollf.saved': 'Modifications enregistrées', 'pollf.editing': 'Modification d\'un sondage préparé', 'pollf.editTitle': 'Modifier le sondage préparé',
+    'drafts.title': 'Sondages préparés ({n})', 'drafts.hint': 'Invisibles pour les participants', 'drafts.launch': 'Lancer', 'drafts.edit': 'Modifier',
     'act.now': 'Connectés maintenant', 'act.peak': 'Pic simultané', 'act.at': 'à {time}', 'act.total': 'Personnes connectées (total)',
     'act.active': 'Participants actifs', 'act.engagement': '{n} % d\'engagement', 'act.interactions': 'Interactions', 'act.peakAct': 'pic {n}/min à {time}',
     'act.noData': 'Pas encore d\'activité.', 'act.people': 'Personnes', 'act.perMin': 'Interactions par minute',
