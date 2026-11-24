@@ -196,18 +196,27 @@ test('simulated demo event: admin only, complete and consistent', async () => {
   assert.ok(s.nps > 0);
   assert.equal((await post(`/events/${r.body.code}/host-login`, { password: 'demo1234' })).body.hostKey, r.body.hostKey);
   const dk = r.body.hostKey, dc = r.body.code;
-  assert.ok(v.demoResetAt > Date.now(), 'demo shows its next reset time');
-  assert.equal((await post(`/events/${dc}/settings`, { key: dk, ended: true })).status, 403, 'host cannot end a demo');
-  assert.equal((await post(`/events/${dc}/settings`, { key: dk, open: false })).status, 403, 'host cannot close questions in a demo');
-  const q0 = v.questions[0];
-  await post(`/events/${dc}/questions/${q0.id}/action`, { key: dk, action: 'delete' });
-  assert.equal((await get(`/events/${dc}?key=${dk}`)).body.questions.length, v.questions.length - 1, 'visitors can still try moderation');
+  // an ordinary demo behaves like any event: no reset, nothing locked
+  assert.equal(v.publicDemo, undefined);
+  assert.equal((await post(`/events/${dc}/settings`, { key: dk, moderation: true })).status, 200);
+  await post(`/events/${dc}/settings`, { key: dk, moderation: false });
+  assert.equal((await post(`/events/${dc}/demo-reset`, { token })).status, 400, 'only listed public demos can be reset');
+  // listed in DEMO_RESET_EVENTS: public demo with automatic reset and locked settings
+  await stop(proc); proc = await start({ DEMO_RESET_EVENTS: dc });
+  const pv = (await get(`/events/${dc}?key=${dk}`)).body;
+  assert.equal(pv.publicDemo, true);
+  assert.ok(pv.demoResetAt > Date.now(), 'shows its next reset time');
+  assert.equal((await post(`/events/${dc}/settings`, { key: dk, ended: true })).status, 403, 'host cannot end the public demo');
+  assert.equal((await post(`/events/${dc}/settings`, { key: dk, open: false })).status, 403, 'host cannot close questions');
+  await post(`/events/${dc}/questions/${pv.questions[0].id}/action`, { key: dk, action: 'delete' });
+  assert.equal((await get(`/events/${dc}?key=${dk}`)).body.questions.length, pv.questions.length - 1, 'visitors can still try moderation');
   assert.equal((await post(`/events/${dc}/demo-reset`, { key: dk })).status, 403, 'only the admin resets on demand');
   assert.equal((await post(`/events/${dc}/demo-reset`, { token })).status, 200);
   const reset = (await get(`/events/${dc}?key=${dk}`)).body;
-  assert.equal(reset.questions.length, v.questions.length, 'content restored');
+  assert.equal(reset.questions.length, pv.questions.length, 'content restored');
   assert.equal(reset.sessions.length, 3, 'agenda restored');
   assert.equal((await post(`/events/${dc}/host-login`, { password: 'demo1234' })).body.hostKey, dk, 'same code and host password after reset');
+  await stop(proc); proc = await start({});
   assert.equal((await post(`/events/${r.body.code}/settings`, { token, delete: true })).status, 200);
 });
 

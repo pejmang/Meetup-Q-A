@@ -134,7 +134,7 @@ function home() {
         !st.admin && h('button', { class: 'btn small', onclick: () => { st.login = true; st.loginMode = 'host'; st.hostCode = e.code; draw(); document.querySelector('[data-keep="pwd"]')?.focus(); } }, '🎛 ' + t('home.host')),
         st.admin && h('button', { class: 'btn small', onclick: () => { safe('key:' + e.code, e.hostKey); go(`/e/${e.code}/host`); } }, '🎛 ' + t('home.manage')),
         st.admin && h('a', { class: 'btn small', href: `${BASE}/api/events/${e.code}/export.csv?key=${encodeURIComponent(e.hostKey)}&sep=${LANG === 'fr' ? ';' : ','}` }, '⬇ CSV'),
-        st.admin && e.demo && h('button', { class: 'btn small', onclick: async () => { if (confirm(t('demo.resetConfirm'))) { await api(`/events/${e.code}/demo-reset`, {}); toast('↺ ' + t('demo.resetDone')); refresh(); } } }, '↺ ' + t('demo.reset')),
+        st.admin && e.publicDemo && h('button', { class: 'btn small', onclick: async () => { if (confirm(t('demo.resetConfirm'))) { await api(`/events/${e.code}/demo-reset`, {}); toast('↺ ' + t('demo.resetDone')); refresh(); } } }, '↺ ' + t('demo.reset')),
         st.admin && h('button', { class: 'btn small', onclick: async () => {
           const pw = prompt(t('home.newHostPwPrompt', { title: e.title }), genPw());
           if (pw == null) return;
@@ -860,11 +860,11 @@ function live(code, mode) {
             h('div', { class: 'row-actions' },
               h('a', { class: 'btn small', href: `${BASE}/e/${d.code}/screen`, target: '_blank' }, '📺 ' + t('host.screen'))),
             h('div', { class: 'row-actions' },
-              h('button', { class: 'btn small', disabled: !!d.demo, title: d.demo ? t('demo.locked') : null, onclick: () => post('/settings', { open: !d.open }) }, d.open ? '⏸ ' + t('host.closeQ') : '▶ ' + t('host.openQ')),
-              h('button', { class: 'btn small', disabled: !!d.demo, title: d.demo ? t('demo.locked') : null, onclick: () => post('/settings', { moderation: !d.moderation }) }, '🛡 ' + (d.moderation ? t('host.modOn') : t('host.modOff'))),
+              h('button', { class: 'btn small', disabled: !!d.publicDemo, title: d.publicDemo ? t('demo.locked') : null, onclick: () => post('/settings', { open: !d.open }) }, d.open ? '⏸ ' + t('host.closeQ') : '▶ ' + t('host.openQ')),
+              h('button', { class: 'btn small', disabled: !!d.publicDemo, title: d.publicDemo ? t('demo.locked') : null, onclick: () => post('/settings', { moderation: !d.moderation }) }, '🛡 ' + (d.moderation ? t('host.modOn') : t('host.modOff'))),
               d.moderation && pending.length > 0 && h('button', { class: 'btn small', onclick: () => post('/settings', { approveAll: true }) }, t('host.approveAll')),
-              h('button', { class: 'btn small', disabled: !!d.demo, title: d.demo ? t('demo.locked') : null, onclick: () => { if (d.ended || confirm(t('host.endConfirm'))) post('/settings', { ended: !d.ended }); } }, d.ended ? t('home.reopen') : '🏁 ' + t('host.end'))),
-            d.demo && h('div', { class: 'muted' }, '🔒 ' + t('demo.locked')))),
+              h('button', { class: 'btn small', disabled: !!d.publicDemo, title: d.publicDemo ? t('demo.locked') : null, onclick: () => { if (d.ended || confirm(t('host.endConfirm'))) post('/settings', { ended: !d.ended }); } }, d.ended ? t('home.reopen') : '🏁 ' + t('host.end'))),
+            d.publicDemo && h('div', { class: 'muted' }, '🔒 ' + t('demo.locked')))),
         h('details', { class: 'card tools', open: state.tools },
           h('summary', {}, '📊 ' + (state.poll.editing ? t('pollf.editTitle') : t('host.newPoll'))), pollForm(d)),
         draftsCard(d),
@@ -897,8 +897,8 @@ function live(code, mode) {
       h('button', { class: 'tab', role: 'tab', 'aria-selected': String(state.tab === k), onclick: () => { state.tab = k; render(); } }, label, n != null && h('i', {}, n))));
 
     const empty = { all: t('empty.all'), pending: t('empty.pending'), mine: t('empty.mine'), answered: t('empty.answered') }[state.tab] || t('empty.top');
-    const demoMins = d.demo && d.demoResetAt ? Math.max(1, Math.ceil((d.demoResetAt - Date.now()) / 60000)) : null;
-    const demoBanner = d.demo && h('div', { class: 'demo-banner' }, '🎭 ', h('b', {}, t('demo.bannerTitle')), ' ',
+    const demoMins = d.publicDemo && d.demoResetAt ? Math.max(1, Math.ceil((d.demoResetAt - Date.now()) / 60000)) : null;
+    const demoBanner = d.publicDemo && h('div', { class: 'demo-banner' }, '🎭 ', h('b', {}, t('demo.bannerTitle')), ' ',
       t('demo.bannerText', { every: d.demoResetMin || 30, n: demoMins ?? '—' }));
     const main = h('main', { class: `main ${d.questions.some(q => q.highlighted) ? 'has-hl' : ''}` },
       demoBanner,

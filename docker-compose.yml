@@ -14,6 +14,8 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
       BASE_PATH: ${BASE_PATH:-}
       TRUST_PROXY: ${TRUST_PROXY:-1}
+      DEMO_RESET_EVENTS: ${DEMO_RESET_EVENTS:-}
+      DEMO_RESET_MIN: ${DEMO_RESET_MIN:-30}
     volumes:
       - qa-data:/data
 volumes:
