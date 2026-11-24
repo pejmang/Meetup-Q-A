@@ -2,6 +2,8 @@
 
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-7b5cd6)](https://polyformproject.org/licenses/noncommercial/1.0.0) [![CI](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml/badge.svg)](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml)
 
+**Free for noncommercial use. For commercial use, contact us: [info@orbii.tech](mailto:info@orbii.tech)**
+
 Live Q&A and polls for meetups and events. Zero dependencies (Node ≥ 18), real-time via Server-Sent Events, data stored in a single JSON file.
 
 ## Roles
@@ -90,10 +92,14 @@ Put a reverse proxy in front (see `nginx.conf.example`). Important: `proxy_buffe
 
 Copyright © 2026 **ORBii SAS**. All rights reserved.
 
+**Free for noncommercial use. For commercial use, contact us: [info@orbii.tech](mailto:info@orbii.tech)**
+
 This software is released under the **[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)** (see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE)):
 
 - ✅ **Free for any noncommercial use**: personal use, research, education, nonprofits, public institutions, community meetups. You may use, modify and share it, keeping the copyright notice.
 - 💼 **Commercial use** (selling it, including it in a paid offer, using it to generate revenue) **requires a separate license from ORBii SAS**: **info@orbii.tech**
+
+**Trademarks.** The ORBii name and logo are not licensed under the PolyForm Noncommercial License or any other license. All rights reserved by ORBii SAS. You may not use them to brand, endorse or promote your own products or services without prior written permission.
 
 GitHub shows the license as "Other" because PolyForm is not in its built-in license list; the terms are the official PolyForm Noncommercial 1.0.0 text.
 
