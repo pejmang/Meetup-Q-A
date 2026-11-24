@@ -477,3 +477,12 @@ body.screen .react { background: color-mix(in srgb, #fff 12%, var(--bg)); }
 .screen-now { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 1.4vh 0 0; font-size: clamp(1rem, 1.8vw, 1.6rem); }
 .screen-now .live-dot { font-size: clamp(.8rem, 1.1vw, 1rem); }
 @media (max-width: 420px) { .sess-card { grid-template-columns: 1fr; gap: 4px; } .sess-time { flex-direction: row; gap: 8px; align-items: baseline; } }
+
+/* ===== Brand signature (discreet) ===== */
+.brand-foot { text-align: center; font-size: .74rem; color: var(--muted); margin: 18px 0 8px; opacity: .85; }
+.brand-foot a { color: inherit; text-decoration: none; }
+.brand-foot a:hover b, .brand-foot a:focus-visible b { color: var(--brand); text-decoration: underline; }
+.brand-foot b { font-weight: 700; letter-spacing: .01em; }
+.screen-brand { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); font-size: .78rem; color: var(--muted); letter-spacing: .02em; }
+.screen-brand b { color: var(--accent); }
+@media print { .brand-foot { display: block; } }

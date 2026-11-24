@@ -9,6 +9,7 @@
 // Meetup Q&A v2 — translations (English / French)
 window.I18N = {
   en: {
+    'brand.powered': 'Powered by',
     'ag.tab': 'Agenda', 'ag.whole': 'Whole meetup', 'ag.now': 'NOW', 'ag.done': 'Done', 'ag.upcoming': 'Upcoming',
     'ag.ask': 'Ask about this session', 'ag.askShort': 'Ask', 'ag.seeQ': 'Questions ({n})', 'ask.to': 'Your question is for:',
     'ag.filter': 'Filter by session', 'ag.filterAll': 'All sessions', 'ag.filterGeneral': 'Whole meetup only', 'ag.filterNote': 'Counters are filtered by session',
@@ -155,6 +156,7 @@ window.I18N = {
     'err.limit3': 'You can send up to 3 answers', 'err.route': 'Unknown route', 'err.invalid': 'Invalid request',
   },
   fr: {
+    'brand.powered': 'Propulsé par',
     'ag.tab': 'Agenda', 'ag.whole': 'Tout le meetup', 'ag.now': 'EN COURS', 'ag.done': 'Terminée', 'ag.upcoming': 'À venir',
     'ag.ask': 'Poser une question sur cette session', 'ag.askShort': 'Poser une question', 'ag.seeQ': 'Questions ({n})', 'ask.to': 'Votre question s\'adresse à :',
     'ag.filter': 'Filtrer par session', 'ag.filterAll': 'Toutes les sessions', 'ag.filterGeneral': 'Tout le meetup uniquement', 'ag.filterNote': 'Compteurs filtrés par session',
