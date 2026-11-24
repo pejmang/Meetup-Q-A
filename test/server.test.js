@@ -154,7 +154,8 @@ test('event-long NPS: created by default, stays open when other polls launch, on
   assert.equal(v.stats.nps, -100);
   const sse = await fetch(`http://127.0.0.1:${PORT}/v2.0/api/events/${code}/stream?cid=scr&screen=1`);
   const reader = sse.body.getReader(); const chunk = new TextDecoder().decode((await reader.read()).value); reader.cancel();
-  const onScreen = JSON.parse(chunk.replace(/^data: /, '').trim()).polls.find(p => p.persistent);
+  const first = chunk.split('\n\n')[0].replace(/^data: /, '');   // the stream may deliver several messages at once
+  const onScreen = JSON.parse(first).polls.find(p => p.persistent);
   assert.notEqual(onScreen.dist, undefined, 'the projection screen shows the results of the poll the host put on screen');
 });
 
