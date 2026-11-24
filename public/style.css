@@ -341,3 +341,11 @@ body.screen { --c-online: #4f7fd1; --c-active: #b38d36; }
 .draft-list li.editing { background: var(--hl); border-radius: 8px; padding: 8px; }
 .draft-main .tag { margin-bottom: 3px; }
 .draft-q { font-weight: 600; overflow-wrap: anywhere; }
+
+/* ===== Analytics box + tab ===== */
+.analytics-box { border-top: 4px solid var(--c-online); }
+.analytics-box > * + * { margin-top: 10px; }
+.analytics-full .kpis { grid-template-columns: repeat(5, 1fr); }
+.analytics-full .kpi:first-child { grid-column: auto; flex-direction: column; }
+.analytics-full .kpis.kpis-6 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 700px) { .analytics-full .kpis, .analytics-full .kpis.kpis-6 { grid-template-columns: repeat(2, 1fr); } }
