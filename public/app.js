@@ -234,37 +234,49 @@ function home() {
     const codeIn = h('input', { type: 'text', placeholder: t('home.codePh'), maxlength: 5, 'aria-label': t('home.codeLabel'), autocapitalize: 'characters' });
     const liveEv = st.events.filter(e => !e.ended), done = st.events.filter(e => e.ended);
     const pwLabel = st.loginMode === 'admin' ? t('login.adminPw') : t('login.hostPw');
-    const pwd = h('input', { type: 'password', 'data-keep': 'pwd', placeholder: pwLabel, 'aria-label': pwLabel, autocomplete: 'current-password', style: fieldStyle });
-    const hostCodeIn = h('input', { type: 'text', 'data-keep': 'hcode', placeholder: t('home.codePh'), 'aria-label': t('home.codeLabel'), maxlength: 5, autocapitalize: 'characters', value: st.hostCode, style: fieldStyle, oninput: e => st.hostCode = e.target.value });
+    const pwd = h('input', { type: st.showPw ? 'text' : 'password', 'data-keep': 'pwd', id: 'lg-pw', placeholder: t('login.pwPh'), autocomplete: 'current-password' });
+    const hostCodeIn = h('input', { type: 'text', 'data-keep': 'hcode', id: 'lg-code', class: 'lg-code', placeholder: 'K7M2P', maxlength: 5, autocapitalize: 'characters', autocomplete: 'off', value: st.hostCode, oninput: e => st.hostCode = e.target.value });
     const titleIn = h('input', { type: 'text', 'data-keep': 'ntitle', placeholder: t('create.titlePh'), maxlength: 80, 'aria-label': t('create.titleLabel'), value: st.newTitle, oninput: e => st.newTitle = e.target.value });
     const hostPwIn = h('input', { type: 'text', 'data-keep': 'npw', placeholder: t('create.hostPwPh'), maxlength: 64, 'aria-label': t('create.hostPwLabel'), autocomplete: 'off', value: st.newPw, oninput: e => st.newPw = e.target.value });
     const mod = h('input', { type: 'checkbox', checked: st.newMod, onchange: e => st.newMod = e.target.checked });
 
-    const top = h('div', { class: 'between hometop' }, BASE ? h('span', { class: 'tag beta' }, 'staging ' + BASE.slice(1)) : h('span', {}),
+    const top = h('div', { class: 'between hometop' }, h('span', {}),
       h('div', { class: 'between' },
         st.admin
           ? [h('span', { class: 'role admin' }, t('home.adminSignedIn')), h('button', { class: 'btn small', onclick: () => { st.pwForm = !st.pwForm; draw(); document.querySelector('[data-keep="apw0"]')?.focus(); } }, '🔑 ' + t('apw.button')), h('button', { class: 'btn small', onclick: () => { safe('adminToken', ''); st.admin = false; refresh(); } }, t('home.signOut'))]
-          : h('button', { class: 'btn small', onclick: () => { st.login = !st.login; draw(); document.querySelector('[data-keep="pwd"]')?.focus(); } }, '🔐 ' + t('home.signIn')),
+          : h('button', { class: 'btn small', onclick: () => { st.login = !st.login; draw(); document.querySelector(st.loginMode === 'host' && !st.hostCode ? '#lg-code' : '#lg-pw')?.focus(); } }, '🔐 ' + t('home.signIn')),
         langBtn()));
 
-    const login = !st.admin && st.login && h('form', { class: 'card stack', onsubmit: async e => {
-      e.preventDefault();
-      try {
-        if (st.loginMode === 'admin') {
-          const r = await api('/login', { password: pwd.value }); safe('adminToken', r.token); st.login = false; refresh();
-        } else {
-          const c = hostCodeIn.value.trim().toUpperCase();
-          if (!c) { toast(t('login.enterCode')); return hostCodeIn.focus(); }
-          const r = await api(`/events/${c}/host-login`, { password: pwd.value });
-          safe('key:' + c, r.hostKey); go(`/e/${c}/host`);
-        }
-      } catch { pwd.select(); }
-    } },
-      h('div', { class: 'tabs', role: 'tablist' }, [['host', '🎛 ' + t('login.tabHost')], ['admin', '🔐 ' + t('login.tabAdmin')]].map(([k, label]) =>
-        h('button', { type: 'button', class: 'tab', role: 'tab', 'aria-selected': String(st.loginMode === k), onclick: () => { st.loginMode = k; draw(); document.querySelector('[data-keep="pwd"]')?.focus(); } }, label))),
-      h('div', { class: 'muted' }, st.loginMode === 'admin' ? t('login.adminHint') : t('login.hostHint')),
-      st.loginMode === 'host' && hostCodeIn, pwd, h('button', { class: 'btn primary' }, t('login.submit')),
-      st.loginMode === 'host' && INFO.googleClientId && h('div', { class: 'muted forgot' }, t('my.forgot'), ' ', link('/my', '🗂 ' + t('my.forgotLink'))));
+    const closeLogin = () => { st.login = false; st.showPw = false; draw(); };
+    const login = !st.admin && st.login && h('div', { class: 'drawer-bg', onclick: e => { if (e.target === e.currentTarget) closeLogin(); } },
+      h('aside', { class: 'drawer', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'lg-title' },
+        h('div', { class: 'drawer-head' },
+          h('div', {}, h('div', { class: 'drawer-ic', 'aria-hidden': 'true' }, st.loginMode === 'admin' ? '🔐' : '🎛'),
+            h('h2', { id: 'lg-title' }, t('login.title')), h('p', { class: 'muted' }, st.loginMode === 'admin' ? t('login.adminHint') : t('login.hostHint'))),
+          h('button', { class: 'modal-x', 'aria-label': t('common.close'), onclick: closeLogin }, '✕')),
+        h('div', { class: 'seg', role: 'tablist' }, [['host', '🎛 ' + t('login.tabHost')], ['admin', '🔐 ' + t('login.tabAdmin')]].map(([k, label]) =>
+          h('button', { type: 'button', role: 'tab', 'aria-selected': String(st.loginMode === k), onclick: () => { st.loginMode = k; draw(); document.querySelector(k === 'host' && !st.hostCode ? '#lg-code' : '#lg-pw')?.focus(); } }, label))),
+        h('form', { class: 'drawer-form', onsubmit: async e => {
+          e.preventDefault();
+          try {
+            if (st.loginMode === 'admin') {
+              const r = await api('/login', { password: pwd.value }); safe('adminToken', r.token); st.login = false; refresh();
+            } else {
+              const c = hostCodeIn.value.trim().toUpperCase();
+              if (!c) { toast(t('login.enterCode')); return hostCodeIn.focus(); }
+              const r = await api(`/events/${c}/host-login`, { password: pwd.value });
+              safe('key:' + c, r.hostKey); st.login = false; go(`/e/${c}/host`);
+            }
+          } catch { pwd.select(); }
+        } },
+          st.loginMode === 'host' && h('label', { class: 'fld', for: 'lg-code' }, h('span', {}, t('home.codeLabel')), hostCodeIn),
+          h('label', { class: 'fld', for: 'lg-pw' }, h('span', {}, st.loginMode === 'admin' ? t('login.adminPw') : t('login.hostPw')),
+            h('div', { class: 'pw-wrap' }, pwd, h('button', { type: 'button', class: 'pw-eye', 'aria-label': t(st.showPw ? 'login.hidePw' : 'login.showPw'), onclick: () => { st.showPw = !st.showPw; const v = pwd.value; draw(); const n = document.querySelector('#lg-pw'); n.value = v; n.focus(); } }, st.showPw ? '🙈' : '👁'))),
+          h('button', { class: 'btn primary block lg-submit' }, t('login.submit') + ' →')),
+        st.loginMode === 'host' && INFO.googleClientId && [
+          h('div', { class: 'or' }, h('span', {}, t('login.or'))),
+          link('/my', h('span', {}, h('b', {}, 'G'), ' ', t('login.google')), { class: 'btn block g-btn' }),
+          h('p', { class: 'muted small-note' }, t('login.googleNote'))]));
 
     const pwIn = (k, ph, ac) => h('input', { type: 'password', 'data-keep': k, placeholder: ph, 'aria-label': ph, autocomplete: ac, style: fieldStyle });
     const [cur, nw, cf] = [pwIn('apw0', t('apw.current'), 'current-password'), pwIn('apw1', t('apw.new'), 'new-password'), pwIn('apw2', t('apw.confirm'), 'new-password')];
@@ -302,16 +314,18 @@ function home() {
 
     document.body.classList.toggle('admin-mode', st.admin);
     $app.replaceChildren(...[st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin'))].filter(Boolean), h('div', { class: `wrap ${st.admin ? 'narrow' : 'home-wide'}` }, top,
-      login && h('div', { class: 'login-top' }, login),   // a host link / sign-in request shows the form first
       st.admin ? h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline'))) : landing(),
       pwCard, create,
       st.admin && h('h2', {}, t('home.live', { n: liveEv.length })),
       st.admin && (liveEv.length ? h('div', { class: 'stack' }, liveEv.map(eventCard)) : h('p', { class: 'empty' }, st.loaded ? t('home.noLive') : t('common.loading'))),
       st.admin && h('form', { class: 'card row-form', onsubmit: e => { e.preventDefault(); if (codeIn.value.trim()) go('/e/' + codeIn.value.trim().toUpperCase()); } },
         codeIn, h('button', { class: 'btn' }, t('home.joinCode'))),
-      st.admin && done.length > 0 && h('div', {}, h('h2', {}, t('home.endedList', { n: done.length })), h('div', { class: 'stack' }, done.map(eventCard))), brandFooter()));
+      st.admin && done.length > 0 && h('div', {}, h('h2', {}, t('home.endedList', { n: done.length })), h('div', { class: 'stack' }, done.map(eventCard))), brandFooter()), login);
   }
+  const onKey = e => { if (!onHome()) return document.removeEventListener('keydown', onKey); if (e.key === 'Escape' && st.login) { st.login = false; draw(); } };
+  document.addEventListener('keydown', onKey);
   draw(); refresh(); infoReady.then(() => { if (onHome()) draw(); });
+  if (st.login) setTimeout(() => document.querySelector(st.hostCode ? '#lg-pw' : '#lg-code')?.focus(), 80);
 }
 
 // ---------- Google sign-in (Google Identity Services) ----------
