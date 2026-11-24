@@ -14,6 +14,7 @@ const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
 const { buildDemo } = require('./demo');
+const { verifyGoogleIdToken, isProEmail, FREE_DOMAINS } = require('./register');
 
 // ---------- Configuration ----------
 const PORT = Number(process.env.PORT) || 3000;
@@ -28,6 +29,9 @@ const RATE_LIMIT = Number(process.env.RATE_LIMIT_PER_MIN) || 30;           // wr
 const LOGIN_LIMIT = Number(process.env.LOGIN_LIMIT_PER_MIN) || 10;         // sign-in attempts per minute per IP
 const IP_LIMIT = Number(process.env.IP_LIMIT_PER_MIN) || 600;              // all writes per minute per IP (shared Wi-Fi)
 const BACKUP_KEEP = Number(process.env.BACKUP_KEEP) || 14;                 // daily backups kept
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';                // enables self-service registration
+const MAX_SPACES_PER_EMAIL = Number(process.env.MAX_SPACES_PER_EMAIL) || 3;  // active (not ended) spaces per organiser
+const TERMS_VERSION = '2026-11-24';
 const DATA_DIR = process.env.DATA_DIR || __dirname;
 const DATA_FILE = path.join(DATA_DIR, 'data.json');
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
@@ -375,7 +379,28 @@ const server = http.createServer(async (req, res) => {
     try {
       const ip = clientIp(req);
       if (req.method === 'POST' && limited('ip:' + ip, IP_LIMIT)) return json(res, 429, { error: 'err.rate' });
-      if (req.method === 'GET' && parts[1] === 'info') return json(res, 200, { lan: lanUrls() });
+      if (req.method === 'GET' && parts[1] === 'info') return json(res, 200, { lan: lanUrls(), googleClientId: GOOGLE_CLIENT_ID || null, termsVersion: TERMS_VERSION, maxSpaces: MAX_SPACES_PER_EMAIL, freeDomains: GOOGLE_CLIENT_ID ? FREE_DOMAINS : [] });
+      // Self-service registration: Google sign-in (verified server-side), professional e-mail, terms accepted
+      if (req.method === 'POST' && parts[1] === 'register') {
+        if (limited('reg:' + ip, LOGIN_LIMIT)) return json(res, 429, { error: 'err.rate' });
+        const b = await body(req);
+        let who;
+        try { who = await verifyGoogleIdToken(b.credential, GOOGLE_CLIENT_ID); } catch (e) { return json(res, 401, { error: /^err\./.test(e.message) ? e.message : 'err.regToken' }); }
+        if (!isProEmail(who.email)) return json(res, 403, { error: 'err.regProEmail' });
+        if (b.acceptTerms !== true || b.termsVersion !== TERMS_VERSION) return json(res, 400, { error: 'err.regTerms' });
+        const title = clean(b.title, 80);
+        if (title.length < 3) return json(res, 400, { error: 'err.title' });
+        if (Object.values(events).filter(e => e.owner && e.owner.email === who.email && !e.ended).length >= MAX_SPACES_PER_EMAIL) return json(res, 403, { error: 'err.regMax' });
+        const code = newCode();
+        const hostKey = crypto.randomBytes(12).toString('hex');
+        const hostPassword = Array.from(crypto.randomBytes(10), x => 'abcdefghjkmnpqrstuvwxyz23456789'[x % 31]).join('');
+        events[code] = { code, title, hostKey, hostPass: hashPw(hostPassword), open: true, moderation: !!b.moderation,
+          questions: [], polls: [], created: Date.now(), participants: [], peakOnline: 0, activity: {},
+          owner: { ...who, acceptedTerms: TERMS_VERSION, acceptedAt: Date.now() } };
+        events[code].polls.push(newNps());
+        save();
+        return json(res, 200, { code, hostKey, hostPassword, email: who.email });
+      }
       if (req.method === 'POST' && parts[1] === 'login') {
         if (limited('login:' + ip, LOGIN_LIMIT)) return json(res, 429, { error: 'err.rate' });
         const b = await body(req);
@@ -401,7 +426,7 @@ const server = http.createServer(async (req, res) => {
           code: e.code, title: e.title, open: e.open, ended: !!e.ended, created: e.created, demo: !!e.demo,
           questions: e.questions.filter(q => q.status !== 'pending').length,
           online: onlineCount(e.code),
-          ...(admin ? { publicDemo: isPublicDemo(e), hostKey: e.hostKey, hasHostPassword: !!e.hostPass, pending: e.questions.filter(q => q.status === 'pending').length } : {}),
+          ...(admin ? { owner: e.owner ? { email: e.owner.email, name: e.owner.name, acceptedAt: e.owner.acceptedAt } : null, publicDemo: isPublicDemo(e), hostKey: e.hostKey, hasHostPassword: !!e.hostPass, pending: e.questions.filter(q => q.status === 'pending').length } : {}),
         }));
         return json(res, 200, { events: list, admin });
       }

@@ -59,6 +59,8 @@ Host passwords are stored hashed (scrypt). Resetting one rotates the event's hos
 | `BACKUP_KEEP` | Daily backups kept | `14` |
 | `DEMO_RESET_EVENTS` | Codes of public demo events that reset automatically and lock end/close/moderation for hosts (e.g. `K4ARN`) | empty (none) |
 | `DEMO_RESET_MIN` | Reset interval of those demos, in minutes | `30` |
+| `GOOGLE_CLIENT_ID` | Google OAuth **Web** client ID — enables self-service registration at `/register` (Google sign-in, professional e-mail only, terms acceptance) | empty (disabled) |
+| `MAX_SPACES_PER_EMAIL` | Active spaces allowed per organiser | `3` |
 | `HOST_PORT` | Host port used by `docker-compose.yml` (bound to 127.0.0.1) | `3000` |
 
 Rate limiting is per IP **and** device on purpose: at a meetup, the whole room usually shares one public IP, so a strict per-IP limit would block everyone.
