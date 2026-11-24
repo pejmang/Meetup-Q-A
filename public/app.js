@@ -472,7 +472,7 @@ function live(code, mode) {
   const qs = new URLSearchParams(location.search);
   const key = qs.get('key') || safe('key:' + code) || '';
   if (qs.get('key')) { safe('key:' + code, qs.get('key')); history.replaceState({}, '', location.pathname + (qs.get('view') ? '?view=' + qs.get('view') : '')); }
-  if (mode === 'host' && !key) return go('/e/' + code);
+  if (mode === 'host' && !key) return go('/?host=' + code);   // not signed in: open the host sign-in with this code filled in
   const isHost = mode === 'host';
   const hostParam = isHost ? '&key=' + encodeURIComponent(key) : '';
   const state = {
