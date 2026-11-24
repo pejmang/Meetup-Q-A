@@ -86,7 +86,7 @@ function route() {
   const p = appPath().split('/').filter(Boolean);
   if (p[0] === 'e' && p[1]) {
     const code = p[1].toUpperCase();
-    if (p[2] === 'report') return report(code);
+    if (p[2] === 'report') { history.replaceState({}, '', `${BASE}/e/${code}/host`); return live(code, 'host'); }   // export is CSV only
     return live(code, p[2] === 'screen' ? 'screen' : p[2] === 'host' ? 'host' : 'guest');
   }
   home();
@@ -126,7 +126,7 @@ function home() {
         !e.ended && h('button', { class: 'btn primary small', onclick: () => go('/e/' + e.code) }, t('home.join')),
         !st.admin && h('button', { class: 'btn small', onclick: () => { st.login = true; st.loginMode = 'host'; st.hostCode = e.code; draw(); document.querySelector('[data-keep="pwd"]')?.focus(); } }, '🎛 ' + t('home.host')),
         st.admin && h('button', { class: 'btn small', onclick: () => { safe('key:' + e.code, e.hostKey); go(`/e/${e.code}/host`); } }, '🎛 ' + t('home.manage')),
-        st.admin && h('button', { class: 'btn small', onclick: () => { safe('key:' + e.code, e.hostKey); go(`/e/${e.code}/report`); } }, '📄 ' + t('home.report')),
+        st.admin && h('a', { class: 'btn small', href: `${BASE}/api/events/${e.code}/export.csv?key=${encodeURIComponent(e.hostKey)}&sep=${LANG === 'fr' ? ';' : ','}` }, '⬇ CSV'),
         st.admin && h('button', { class: 'btn small', onclick: async () => {
           const pw = prompt(t('home.newHostPwPrompt', { title: e.title }), genPw());
           if (pw == null) return;
@@ -471,7 +471,8 @@ function live(code, mode) {
   const state = {
     data: null, tab: isHost ? 'all' : 'top', draft: '', author: safe('author') || '', anon: safe('anon') === '1',
     sheet: false, tools: wide(), q: '', merging: null, noteEdit: null,
-    poll: { type: 'choice', question: '', options: ['', ''], hidden: false }, drafts: {}, view: qs.get('view') === 'polls' ? 'polls' : 'questions',
+    poll: { type: 'choice', question: '', options: ['', ''], hidden: false }, drafts: {}, view: ['polls', 'agenda'].includes(qs.get('view')) ? qs.get('view') : 'questions',
+    sessionFilter: 'all', askSession: undefined, sessEdit: { id: null, title: '', speaker: '', startTime: '', duration: '', description: '' },
   };
   if (mode === 'screen') document.body.classList.add('screen');
   if (isHost) document.body.classList.add('host-mode');
@@ -485,6 +486,12 @@ function live(code, mode) {
   stream.onerror = () => { if (!state.data) { toast(t('err.notFound')); go('/'); } };
 
   const post = (p, d) => api(`/events/${code}${p}`, { key: isHost ? key : undefined, ...d });
+  // Agenda helpers (an event without sessions behaves exactly as before)
+  const sessList = () => (state.data && state.data.sessions) || [];
+  const sessById = id => sessList().find(x => x.id === id);
+  const liveSess = () => sessList().find(x => x.status === 'live');
+  const sessLabel = x => x.title + (x.speaker ? ' — ' + x.speaker : '');
+  const askTarget = () => state.askSession === undefined ? (liveSess()?.id || '') : (sessById(state.askSession) ? state.askSession : '');
   const act = (id, action, extra) => post(`/questions/${id}/action`, { action, ...extra });
   const ui = { drafts: state.drafts, rerender: () => render() };
 
@@ -508,6 +515,7 @@ function live(code, mode) {
       q.highlighted && h('span', { class: 'tag warn' }, '🎤 ' + t('q.onScreen')),
       q.status === 'answered' && h('span', { class: 'tag ok' }, '✓ ' + t('q.answered')),
       q.status === 'pending' && h('span', { class: 'tag' }, '⏳ ' + t('q.pending')),
+      q.sessionId && sessById(q.sessionId) && h('span', { class: 'tag sess' }, '🎤 ' + sessById(q.sessionId).title),
       q.merged.length > 0 && h('span', { class: `tag ${q.mergedMine && !isHost ? 'warn' : ''}` }, '🔗 ' + (q.mergedMine && !isHost ? t('q.mergedTag') : t('q.mergedN', { n: q.merged.length }))),
     ];
     const voteBtn = h('button', { class: 'vote', 'aria-pressed': String(q.voted), 'aria-label': `${q.voted ? t('q.unvote') : t('q.upvote')} — ${q.votes}`,
@@ -536,6 +544,8 @@ function live(code, mode) {
         h('button', { class: 'btn small', onclick: () => { state.noteEdit = { id: q.id, text: q.note }; render(); setTimeout(() => document.querySelector(`[data-keep="note${q.id}"]`)?.focus(), 30); } }, '💬 ' + (q.note ? t('q.editNote') : t('q.addNote'))),
         h('button', { class: 'btn small', onclick: () => act(q.id, 'pin') }, q.pinned ? t('q.unpin') : '📌 ' + t('q.pin')),
         h('button', { class: 'btn small', onclick: () => { state.merging = q.id; render(); toast(t('q.mergePick')); } }, '🔗 ' + t('q.merge')),
+        sessList().length > 0 && h('select', { class: 'move-sel', 'aria-label': t('ag.moveTo'), title: t('ag.moveTo'), onchange: async e => { await act(q.id, 'move', { sessionId: e.target.value || null }); toast(t('ag.moved')); } },
+          h('option', { value: '', selected: !q.sessionId }, '🗓 ' + t('ag.whole')), sessList().map(x => h('option', { value: x.id, selected: q.sessionId === x.id }, '🎤 ' + sessLabel(x)))),
         h('button', { class: 'btn small danger', 'aria-label': t('common.delete'), onclick: () => { if (confirm(t('q.deleteConfirm'))) act(q.id, 'delete'); } }, '🗑'));
     }
     const heat = q.votes >= 10 ? 3 : q.votes >= 5 ? 2 : q.votes >= 2 ? 1 : 0;
@@ -607,10 +617,14 @@ function live(code, mode) {
     return h('form', { class: 'stack', onsubmit: async e => {
       e.preventDefault();
       if (state.draft.trim().length < 3) return toast(t('err.short'));
-      await post('/questions', { text: state.draft, author: state.author, anon: state.anon });
+      await post('/questions', { text: state.draft, author: state.author, anon: state.anon, sessionId: sessList().length ? (askTarget() || null) : null });
       state.draft = ''; state.sheet = false; state.tab = 'mine'; render();
       toast(d.moderation ? t('ask.sentModerated') : t('ask.sent'));
-    } }, ta, h('div', { class: 'between' }, h('label', { class: 'row' }, anon, t('q.anonymous')), counter), nameIn, h('button', { class: 'btn primary block' }, t('ask.submit')));
+    } }, sessList().length > 0 && h('label', { class: 'ask-to' }, h('span', { class: 'muted' }, t('ask.to')),
+        h('select', { 'data-keep': 'as' + k, onchange: e => { state.askSession = e.target.value; } },
+          h('option', { value: '', selected: askTarget() === '' }, '🗓 ' + t('ag.whole')),
+          sessList().map(x => h('option', { value: x.id, selected: askTarget() === x.id }, (x.status === 'live' ? '🔴 ' : '🎤 ') + sessLabel(x))))),
+      ta, h('div', { class: 'between' }, h('label', { class: 'row' }, anon, t('q.anonymous')), counter), nameIn, h('button', { class: 'btn primary block' }, t('ask.submit')));
   }
 
   // ----- Host: new poll form -----
@@ -674,8 +688,7 @@ function live(code, mode) {
     const onScreen = d.screenPoll === 'activity';
     return h('div', { class: 'row-actions' },
       h('button', { class: `btn small ${onScreen ? 'primary' : ''}`, onclick: () => post('/settings', { screenActivity: !onScreen }) }, onScreen ? t('act.offScreen') : '📺 ' + t('act.toScreen')),
-      h('a', { class: 'btn small', href: csvHref() }, '⬇ ' + t('export.csv')),
-      h('a', { class: 'btn small', href: `${BASE}/e/${code}/report`, target: '_blank' }, '📄 ' + t('export.report')));
+      h('a', { class: 'btn small', href: csvHref() }, '⬇ ' + t('export.csv')));
   }
   // Sidebar box (compact)
   function statsCard(d) {
@@ -714,6 +727,67 @@ function live(code, mode) {
       h('div', { class: 'card' }, h('b', {}, '⚙️ ' + t('an.actions')), analyticsActions(d)));
   }
 
+  // ----- Agenda: participant view -----
+  function agendaPanel(d) {
+    const ss = sessList();
+    return h('div', { class: 'stack agenda' }, ss.map(x => {
+      const nq = d.questions.filter(q => q.sessionId === x.id && q.status !== 'pending').length;
+      return h('article', { class: `card sess-card s-${x.status}` },
+        h('div', { class: 'sess-time' }, h('b', {}, x.startTime || '—'), x.duration && h('small', {}, x.duration + ' min')),
+        h('div', { class: 'sess-main' },
+          h('div', { class: 'tags' }, x.status === 'live' ? h('span', { class: 'live-dot' }, t('ag.now')) : h('span', { class: 'tag' }, x.status === 'done' ? '✓ ' + t('ag.done') : t('ag.upcoming'))),
+          h('b', { class: 'sess-title' }, x.title), x.speaker && h('div', { class: 'muted' }, '🎤 ' + x.speaker),
+          x.description && h('p', { class: 'sess-desc' }, x.description),
+          h('div', { class: 'row-actions' },
+            d.open && x.status !== 'done' && h('button', { class: 'btn small primary', onclick: () => {
+              state.askSession = x.id; state.view = 'questions';
+              if (wide()) { render(); document.querySelector('[data-keep="qa"]')?.focus(); } else { state.sheet = true; render(); setTimeout(() => document.querySelector('[data-keep="qs"]')?.focus(), 50); }
+            } }, '✍️ ' + t('ag.ask')),
+            h('button', { class: 'btn small', onclick: () => { state.sessionFilter = x.id; state.view = 'questions'; render(); window.scrollTo(0, 0); } }, '💬 ' + t('ag.seeQ', { n: nq })))));
+    }));
+  }
+
+  // ----- Agenda: host editor -----
+  function agendaEditor(d) {
+    const ss = sessList(), E = state.sessEdit;
+    const field = (k, attrs) => h(attrs.tag || 'input', { 'data-keep': 'se-' + k, value: E[k] ?? '', oninput: e => { E[k] = e.target.value; }, ...attrs, tag: null });
+    const reset = () => { state.sessEdit = { id: null, title: '', speaker: '', startTime: '', duration: '', description: '' }; render(); };
+    const sAct = (action, extra) => post('/sessions', { action, ...extra });
+    const form = h('form', { class: 'card stack sess-form', onsubmit: async e => {
+      e.preventDefault();
+      const payload = { title: E.title, speaker: E.speaker, startTime: E.startTime, duration: E.duration === '' ? null : Number(E.duration), description: E.description };
+      await sAct(E.id ? 'update' : 'create', E.id ? { id: E.id, ...payload } : payload);
+      toast('✔ ' + (E.id ? t('ag.saved') : t('ag.added'))); reset();
+    } },
+      h('div', { class: 'between' }, h('b', {}, E.id ? '✏️ ' + t('ag.editTitle') : '➕ ' + t('ag.add')), h('span', { class: 'muted' }, t('ag.count', { n: ss.length }))),
+      field('title', { type: 'text', maxlength: 100, placeholder: t('ag.titlePh'), 'aria-label': t('ag.titleL'), required: true }),
+      field('speaker', { type: 'text', maxlength: 100, placeholder: t('ag.speakerPh'), 'aria-label': t('ag.speakerPh') }),
+      h('div', { class: 'sess-row' },
+        h('label', {}, h('span', { class: 'muted' }, t('ag.start')), field('startTime', { type: 'time' })),
+        h('label', {}, h('span', { class: 'muted' }, t('ag.duration')), field('duration', { type: 'number', min: 1, max: 1440, inputmode: 'numeric', placeholder: '20' }))),
+      field('description', { tag: 'textarea', rows: 2, maxlength: 300, placeholder: t('ag.descPh'), 'aria-label': t('ag.descPh') }),
+      h('div', { class: 'row-actions', style: 'margin:0' },
+        h('button', { class: 'btn primary', disabled: !E.id && ss.length >= 20 }, E.id ? '💾 ' + t('ag.save') : '➕ ' + t('ag.add')),
+        E.id && h('button', { type: 'button', class: 'btn', onclick: reset }, t('common.cancel'))));
+    const list = ss.length ? h('ol', { class: 'sess-list' }, ss.map((x, i) => h('li', { class: `s-${x.status} ${E.id === x.id ? 'editing' : ''}` },
+      h('div', { class: 'sess-li-main' },
+        h('div', {}, x.status === 'live' ? h('span', { class: 'live-dot' }, t('ag.now')) : h('span', { class: 'tag' }, x.status === 'done' ? '✓ ' + t('ag.done') : t('ag.upcoming')),
+          ' ', h('span', { class: 'muted' }, [x.startTime, x.duration && x.duration + ' min'].filter(Boolean).join(' · '))),
+        h('b', {}, x.title), x.speaker && h('div', { class: 'muted' }, '🎤 ' + x.speaker),
+        h('div', { class: 'muted' }, t('ag.seeQ', { n: d.questions.filter(q => q.sessionId === x.id).length }))),
+      h('div', { class: 'row-actions', style: 'margin:6px 0 0' },
+        x.status !== 'live' && h('button', { class: 'btn small primary', onclick: () => sAct('status', { id: x.id, status: 'live' }) }, '▶ ' + t('ag.goLive')),
+        x.status === 'live' && h('button', { class: 'btn small', onclick: () => sAct('status', { id: x.id, status: 'done' }) }, '✓ ' + t('ag.markDone')),
+        x.status === 'done' && h('button', { class: 'btn small', onclick: () => sAct('status', { id: x.id, status: 'upcoming' }) }, '↺ ' + t('ag.reset')),
+        h('button', { class: 'btn small', 'aria-label': t('ag.up'), title: t('ag.up'), disabled: i === 0, onclick: () => sAct('move', { id: x.id, dir: -1 }) }, '↑'),
+        h('button', { class: 'btn small', 'aria-label': t('ag.down'), title: t('ag.down'), disabled: i === ss.length - 1, onclick: () => sAct('move', { id: x.id, dir: 1 }) }, '↓'),
+        h('button', { class: 'btn small', onclick: () => { state.sessEdit = { id: x.id, title: x.title, speaker: x.speaker || '', startTime: x.startTime || '', duration: x.duration ?? '', description: x.description || '' }; render(); document.querySelector('[data-keep="se-title"]')?.focus(); } }, '✏️ ' + t('ag.edit')),
+        h('button', { class: 'btn small danger', 'aria-label': t('common.delete'), onclick: () => confirm(t('ag.deleteConfirm', { title: x.title })) && sAct('delete', { id: x.id }) }, '🗑'))))) : h('p', { class: 'empty' }, t('ag.empty'));
+    return h('section', { class: 'stack agenda-editor' }, form,
+      ss.length > 0 && h('label', { class: 'row card' }, h('input', { type: 'checkbox', checked: !!d.screenSessionOnly, onchange: e => post('/settings', { screenSessionOnly: e.target.checked }) }), '📺 ' + t('ag.screenOnly')),
+      list);
+  }
+
   // ----- Participant / host page -----
   function pageView(d) {
     const base = `${shareBase()}/e/${d.code}`;
@@ -728,9 +802,13 @@ function live(code, mode) {
     // 'Top 1/2/3' always goes to the most-voted questions, whatever is pinned
     const medalIds = [...liveQ].filter(q => q.votes > 0).sort((a, b) => (b.votes - a.votes) || (a.ts - b.ts)).slice(0, 3).map(q => q.id);
     const medalRank = id => medalIds.indexOf(id);
+    const sessions = sessList();
+    if (!sessions.length || (state.sessionFilter !== 'all' && state.sessionFilter !== 'general' && !sessById(state.sessionFilter))) state.sessionFilter = 'all';
+    const inScope = q => state.sessionFilter === 'all' || (state.sessionFilter === 'general' ? !q.sessionId : q.sessionId === state.sessionFilter);
+    const scopedQ = liveQ.filter(inScope);
 
     const tabs = isHost
-      ? [['all', t('tab.all'), all.length], ['pending', t('tab.pending'), pending.length], ['top', t('tab.top'), null], ['new', t('tab.new'), null], ['answered', t('tab.answered'), answered.length], ['analytics', '📈 ' + t('an.tab'), null]]
+      ? [['all', t('tab.all'), all.length], ['pending', t('tab.pending'), pending.length], ['top', t('tab.top'), null], ['new', t('tab.new'), null], ['answered', t('tab.answered'), answered.length], ['agenda', '🗓 ' + t('ag.tab'), sessions.length], ['analytics', '📈 ' + t('an.tab'), null]]
       : [['top', '🔥 ' + t('tab.top'), null], ['new', '🕒 ' + t('tab.new'), null], ['mine', t('tab.mine'), mine.length], ['answered', t('tab.answered'), answered.length]];
     if (!tabs.some(x => x[0] === state.tab)) state.tab = tabs[0][0];
 
@@ -744,6 +822,7 @@ function live(code, mode) {
       case 'answered': list = answered.sort(byVotes); break;
       default: list = [...liveQ].sort(byVotes);   // Popular keeps answered questions: the final ranking stays visible
     }
+    list = list.filter(inScope);
     if (needle) list = list.filter(q => q.text.toLowerCase().includes(needle) || (q.author || '').toLowerCase().includes(needle) || q.merged.some(m => m.text.toLowerCase().includes(needle)));
 
     const stat = (n, label) => h('div', { class: 'stat' }, h('b', {}, n), h('span', {}, label));
@@ -752,7 +831,7 @@ function live(code, mode) {
       h('div', { class: 'meta' }, h('span', { class: 'online', title: t('stats.online') }, '● ' + d.online), h('span', { class: 'code' }, d.code), langBtn())));
 
     const stats = h('div', { class: 'stats' },
-      stat(liveQ.length, t('stats.questionsL')), stat(totalVotes, t('stats.qVotesL')),
+      stat(scopedQ.length, t('stats.questionsL')), stat(scopedQ.reduce((a, q) => a + q.votes, 0), t('stats.qVotesL')),
       stat(d.polls.filter(p => !p.draft).reduce((a, p) => a + p.total, 0), t('stats.pollAnswersL')),
       isHost ? stat(pending.length, t('stats.pendingL')) : stat(d.online, t('stats.onlineL')));
 
@@ -789,8 +868,11 @@ function live(code, mode) {
     const openPolls = d.polls.filter(p => p.open);
     const todo = openPolls.filter(p => !hasAnswered(p));
     const teaserPoll = todo.find(p => !p.persistent) || todo.find(p => p.persistent);
-    const viewSwitch = !isHost && h('div', { class: 'seg', role: 'tablist' },
+    if (!sessions.length && state.view === 'agenda') state.view = 'questions';
+    const viewSwitch = !isHost && h('div', { class: 'seg', role: 'tablist', style: `grid-template-columns:repeat(${sessions.length ? 3 : 2},1fr)` },
       h('button', { role: 'tab', 'aria-selected': String(state.view === 'questions'), onclick: () => { state.view = 'questions'; render(); } }, '💬 ' + t('view.questions'), h('i', {}, liveQ.length)),
+      sessions.length > 0 && h('button', { role: 'tab', 'aria-selected': String(state.view === 'agenda'), onclick: () => { state.view = 'agenda'; render(); } }, '🗓 ' + t('ag.tab'),
+        liveSess() ? h('i', { class: 'dot' }, '●') : h('i', {}, sessions.length)),
       h('button', { role: 'tab', 'aria-selected': String(state.view === 'polls'), onclick: () => { state.view = 'polls'; render(); } }, '📊 ' + t('view.polls'),
         todo.length ? h('i', { class: 'dot' }, todo.length) : h('i', {}, d.polls.length)));
     const teaser = !isHost && state.view === 'questions' && teaserPoll && h('button', { class: 'poll-teaser', onclick: () => { state.view = 'polls'; render(); window.scrollTo(0, 0); } },
@@ -807,8 +889,17 @@ function live(code, mode) {
       isHost && state.merging && h('div', { class: 'banner' }, '🔗 ' + t('q.mergeBanner'), ' ', h('button', { class: 'btn small', onclick: () => { state.merging = null; render(); } }, t('common.cancel'))),
       !isHost && pending.some(q => q.mine) && h('div', { class: 'banner' }, '⏳ ' + t('guest.pendingMine', { n: pending.filter(q => q.mine).length })),
       viewSwitch, teaser,
-      !isHost && state.view === 'polls' ? pollsPanel(d) : [
+      liveSess() && (isHost ? !['agenda', 'analytics'].includes(state.tab) : state.view === 'questions') && h('div', { class: 'now-banner' },
+        h('span', { class: 'live-dot' }, t('ag.now')), h('span', { class: 'nb-t' }, sessLabel(liveSess())),
+        !isHost && d.open && h('button', { class: 'btn small', onclick: () => { state.askSession = liveSess().id; if (wide()) document.querySelector('[data-keep="qa"]')?.focus(); else { state.sheet = true; render(); setTimeout(() => document.querySelector('[data-keep="qs"]')?.focus(), 50); } } }, '✍️ ' + t('ag.askShort'))),
+      !isHost && state.view === 'polls' ? pollsPanel(d) : !isHost && state.view === 'agenda' ? agendaPanel(d) : isHost && state.tab === 'agenda' ? [h('div', { class: 'toolbar' }, tabBar), agendaEditor(d)] : [
         h('div', { class: 'toolbar' }, tabBar, state.tab !== 'analytics' && search),
+        state.tab !== 'analytics' && sessions.length > 0 && h('div', { class: 'sess-filter' }, h('span', { class: 'muted' }, '🗓'),
+          h('select', { 'data-keep': 'sf', 'aria-label': t('ag.filter'), onchange: e => { state.sessionFilter = e.target.value; render(); } },
+            h('option', { value: 'all', selected: state.sessionFilter === 'all' }, t('ag.filterAll')),
+            h('option', { value: 'general', selected: state.sessionFilter === 'general' }, t('ag.filterGeneral')),
+            sessions.map(x => h('option', { value: x.id, selected: state.sessionFilter === x.id }, (x.status === 'live' ? '🔴 ' : '🎤 ') + sessLabel(x)))),
+          state.sessionFilter !== 'all' && h('span', { class: 'muted' }, t('ag.filterNote'))),
         state.tab !== 'analytics' && list.length > 0 && h('div', { class: 'react-legend muted' }, Object.entries(REACT_KEYS).map(([e, k]) => h('span', {}, e + ' ' + t('react.' + k)))),
         isHost && state.tab === 'analytics' && d.stats ? analyticsPanel(d) :
         list.length ? list.map(q => qCard(q, state.tab === 'top' && !needle ? medalRank(q.id) : -1)) : h('p', { class: 'empty' }, needle ? t('empty.search') : empty)]);
@@ -830,7 +921,8 @@ function live(code, mode) {
   function screenView(d) {
     const liveQ = d.questions.filter(q => q.status !== 'pending');
     const hl = liveQ.find(q => q.highlighted);
-    const top = [...liveQ].sort((a, b) => (b.pinned - a.pinned) || (b.votes - a.votes)).slice(0, 6);
+    const nowS = (d.sessions || []).find(x => x.status === 'live');
+    const top = [...liveQ].filter(q => !(d.screenSessionOnly && nowS) || q.sessionId === nowS.id).sort((a, b) => (b.pinned - a.pinned) || (b.votes - a.votes)).slice(0, 6);
     const poll = d.polls.find(p => p.id === d.screenPoll) || d.polls.find(p => p.open && !p.persistent);
     const joinUrl = `${shareBase()}/e/${d.code}`;
     let mainBlock;
@@ -848,53 +940,12 @@ function live(code, mode) {
         top.length ? top.map((q, i) => qCard(q, q.status === 'answered' ? -1 : i)) : h('p', { class: 'muted' }, t('screen.waiting')));
     }
     return h('div', { class: 'screen-wrap' },
-      h('main', {}, h('h1', {}, d.title), mainBlock),
+      h('main', {}, h('h1', {}, d.title),
+        nowS && h('div', { class: 'screen-now' }, h('span', { class: 'live-dot' }, t('ag.now')), h('b', {}, nowS.title), nowS.speaker && h('span', { class: 'muted' }, '🎤 ' + nowS.speaker)),
+        mainBlock),
       h('aside', {}, h('div', { class: 'join-box' }, h('div', { class: 'muted' }, t('screen.joinAt')), h('div', { style: 'font-weight:600;margin:6px 0;overflow-wrap:anywhere' }, joinUrl.replace(/^https?:\/\//, '')),
         qrEl(joinUrl), h('div', { class: 'muted' }, t('screen.code')), h('div', { class: 'c' }, d.code), h('div', { class: 'muted', style: 'margin-top:8px' }, '● ' + t('screen.online', { n: d.online })))));
   }
-}
-
-// ---------- Post-event report (print → PDF) ----------
-async function report(code) {
-  const qk = new URLSearchParams(location.search).get('key');
-  if (qk) { safe('key:' + code, qk); history.replaceState({}, '', location.pathname); }
-  const key = safe('key:' + code) || '';
-  if (!key) return go('/?host=' + code);
-  document.body.classList.add('report');
-  $app.replaceChildren(h('p', { class: 'empty' }, t('common.loading')));
-  let d;
-  try {
-    const r = await fetch(`${BASE}/api/events/${code}?cid=${cid}&key=${encodeURIComponent(key)}`);
-    d = await r.json();
-    if (!r.ok || !d.host) throw new Error();
-  } catch { toast(t('host.expired')); return go('/?host=' + code); }
-  document.title = `${d.title} — ${t('report.title')}`;
-  const s = d.stats;
-  const liveQ = d.questions.filter(q => q.status !== 'pending').sort((a, b) => b.votes - a.votes || a.ts - b.ts);
-  const kpi = (n, l) => h('div', { class: 'stat' }, h('b', {}, n), h('span', {}, l));
-  $app.replaceChildren(h('div', { class: 'wrap narrow report-page' },
-    h('div', { class: 'row-actions no-print' },
-      h('button', { class: 'btn primary', onclick: () => window.print() }, '🖨 ' + t('report.pdf')),
-      h('a', { class: 'btn', href: `${BASE}/api/events/${code}/export.csv?key=${encodeURIComponent(key)}&sep=${LANG === 'fr' ? ';' : ','}` }, '⬇ ' + t('export.csv')),
-      link(`/e/${code}/host`, '← ' + t('report.back'), { class: 'btn' }), langBtn()),
-    h('header', { class: 'report-head' }, h('div', { class: 'muted' }, 'Meetup Q&A · ' + t('report.title')), h('h1', {}, d.title),
-      h('div', { class: 'muted' }, `${fmtDate(s.created)}${s.endedAt ? ' → ' + fmtTime(s.endedAt) : ''} · ${t('screen.code')} ${d.code}`)),
-    h('h2', {}, t('stats.title')),
-    h('div', { class: 'stats report-kpis' }, kpi(s.questions, t('stats.questions')), kpi(s.votes, t('stats.votes')),
-      kpi(s.answered, t('stats.answered')), kpi(s.reactions, t('stats.reactions'))),
-    h('h2', {}, '📈 ' + t('act.screenTitle')), activityKpis(s), activityChart(s, { w: 720, table: true }),
-    s.nps !== undefined && h('div', { class: 'card nps-hl' }, h('div', {}, h('div', { class: 'muted' }, '📈 ' + t('stats.nps')), h('div', { class: 'score' }, s.nps != null ? (s.nps > 0 ? '+' : '') + s.nps : '—')),
-      h('div', { class: 'muted' }, t('report.npsBased', { n: s.npsResponses }))),
-    h('h2', {}, t('report.questions', { n: liveQ.length })),
-    liveQ.length ? h('ol', { class: 'report-q' }, liveQ.map(q => h('li', {},
-      h('div', { class: 'between' }, h('b', {}, q.text), h('span', { class: 'votes' }, '👍 ' + q.votes)),
-      h('div', { class: 'muted' }, [q.author || t('q.anonymous'), q.status === 'answered' ? '✓ ' + t('q.answered') : null, q.pinned ? '📌 ' + t('q.pinned') : null].filter(Boolean).join(' · ')),
-      q.note && h('div', { class: 'note' }, h('b', {}, '💬 ' + t('q.hostAnswer')), ' ', q.note),
-      q.merged.length > 0 && h('div', { class: 'muted' }, '🔗 ' + t('q.mergedN', { n: q.merged.length }) + ': ' + q.merged.map(m => '« ' + m.text + ' »').join(' · '))))) : h('p', { class: 'muted' }, t('empty.all')),
-    h('h2', {}, t('report.polls', { n: d.polls.filter(p => !p.draft).length })),
-    d.polls.some(p => !p.draft) ? d.polls.filter(p => !p.draft).map(p => h('section', { class: 'card poll' }, h('div', { class: 'poll-h' }, h('span', { class: 'tag' }, TYPE_ICON[p.type] + ' ' + t('ptype.' + p.type)), h('b', {}, pollQ(p))),
-      pollResults(p), h('div', { class: 'muted', style: 'margin-top:6px' }, t('poll.responses', { n: p.total })))) : h('p', { class: 'muted' }, t('report.noPolls')),
-    h('p', { class: 'muted foot' }, t('report.generated', { date: fmtDate(Date.now()) }))));
 }
 
 route();

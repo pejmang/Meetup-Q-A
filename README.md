@@ -25,7 +25,7 @@ Live Q&A and polls for meetups and events. Zero dependencies (Node ≥ 18), real
 Host passwords are stored hashed (scrypt). Resetting one rotates the event's host key, which signs out current hosts. The admin password also works as a host password on any event.
 
 ## Features (v2.0)
-- **Post-event deliverable**: CSV export (questions, votes, notes, merged duplicates, polls), printable report → PDF (title, date, stats, ranked questions, poll results), host answer/note on each question, merge duplicates (votes are combined, a device is never counted twice), end-of-event statistics (participants, peak online, votes, poll responses, activity peak and timeline).
+- **Post-event deliverable**: CSV export (questions with session, votes, notes, merged duplicates, polls, audience stats), host answer/note on each question, merge duplicates (votes are combined, a device is never counted twice), end-of-event statistics (participants, peak online, votes, poll responses, activity peak and timeline).
 - **6 poll formats**: single choice, multiple choice, live word cloud, rating 1–5, NPS 0–10, open question — each with an optional "hide results until the poll closes", all rendered on the projection screen.
 - **Prepared polls**: hosts prepare polls before the event (invisible to participants), edit them, and launch each one in one click.
 - **Event-long NPS**: every event gets an NPS open for the whole meetup (not closed by other polls; participants can change their score; results hidden until closed).

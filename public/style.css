@@ -447,3 +447,33 @@ button.cbar { cursor: pointer; }
 @media (prefers-color-scheme: dark) { .react { background: color-mix(in srgb, #fff 10%, var(--bg)); } }
 body.screen .react { background: color-mix(in srgb, #fff 12%, var(--bg)); }
 .past-polls > summary { font-weight: 600; }
+
+/* ===== Agenda (sessions) ===== */
+.tag.sess { background: color-mix(in srgb, #7b5cd6 16%, var(--card)); color: var(--ink); border: 1px solid color-mix(in srgb, #7b5cd6 40%, transparent); }
+.now-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 12px; border-radius: 12px; border: 2px solid #e0452b; background: color-mix(in srgb, #e0452b 7%, var(--card)); }
+.now-banner .nb-t { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.sess-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 0 !important; }
+.sess-filter select, .ask-to select, .move-sel { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; max-width: 100%; }
+.move-sel { font-size: .82rem; padding: 4px 8px; min-height: 32px; max-width: 220px; }
+.ask-to { display: grid; gap: 4px; }
+.ask-to select { width: 100%; padding: 10px 12px; font-size: 16px; }
+.sess-card { display: grid; grid-template-columns: 70px 1fr; gap: 12px; }
+.sess-card.s-live { border: 2px solid #e0452b; box-shadow: 0 4px 18px rgba(224,69,43,.12); }
+.sess-card.s-done { opacity: .68; }
+.sess-time { display: flex; flex-direction: column; align-items: flex-start; font-variant-numeric: tabular-nums; }
+.sess-time b { font-size: 1.15rem; }
+.sess-time small { color: var(--muted); }
+.sess-title { display: block; font-size: 1.05rem; margin: 2px 0; overflow-wrap: anywhere; }
+.sess-desc { margin: 6px 0 0; font-size: .92rem; color: var(--ink); opacity: .85; overflow-wrap: anywhere; }
+.sess-form .sess-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sess-form .sess-row label { display: grid; gap: 4px; }
+.sess-form input[type=time], .sess-form input[type=number] { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); font-size: 16px; color: var(--ink); }
+.sess-list { margin: 0; padding-left: 22px; }
+.sess-list li { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.sess-list li.s-live { background: color-mix(in srgb, #e0452b 6%, transparent); border-radius: 8px; padding: 10px 8px; }
+.sess-list li.editing { background: var(--hl); border-radius: 8px; padding: 10px 8px; }
+.sess-li-main b { display: block; overflow-wrap: anywhere; }
+.agenda-editor label.card { display: flex; align-items: center; gap: 8px; }
+.screen-now { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 1.4vh 0 0; font-size: clamp(1rem, 1.8vw, 1.6rem); }
+.screen-now .live-dot { font-size: clamp(.8rem, 1.1vw, 1rem); }
+@media (max-width: 420px) { .sess-card { grid-template-columns: 1fr; gap: 4px; } .sess-time { flex-direction: row; gap: 8px; align-items: baseline; } }

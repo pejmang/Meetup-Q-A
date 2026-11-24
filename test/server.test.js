@@ -213,12 +213,58 @@ test('admin can change the admin password; old password and old sessions stop wo
   token = (await post('/login', { password: ADMIN })).body.token;
 });
 
+test('agenda: sessions CRUD, one live at a time, max 20, questions per session, move, delete keeps questions', async () => {
+  const S = `/events/${code}/sessions`, Q = `/events/${code}/questions`;
+  let v = (await get(`/events/${code}?cid=x`)).body;
+  assert.deepEqual(v.sessions, [], 'an event without sessions shows an empty agenda');
+  assert.equal((await post(S, { cid: 'x', action: 'create', title: 'Keynote' })).status, 403, 'host only');
+  assert.equal((await post(S, { key: hostKey, action: 'create', title: 'AB' })).status, 400, 'title 3-100');
+  assert.equal((await post(S, { key: hostKey, action: 'create', title: 'Keynote', startTime: '25:00' })).status, 400, 'time HH:MM');
+  for (const [title, speaker, startTime, duration] of [['Keynote', 'Sarah', '18:30', 20], ['Agents in production', 'Karim', '18:50', 25], ['Panel', '', '', null]])
+    assert.equal((await post(S, { key: hostKey, action: 'create', title, speaker, startTime, duration })).status, 200);
+  v = (await get(`/events/${code}?cid=x`)).body;
+  const [k, a, p] = v.sessions;
+  assert.deepEqual(v.sessions.map(x => [x.title, x.order, x.status]), [['Keynote', 0, 'upcoming'], ['Agents in production', 1, 'upcoming'], ['Panel', 2, 'upcoming']]);
+  await post(S, { key: hostKey, action: 'move', id: p.id, dir: -1 });
+  assert.deepEqual((await get(`/events/${code}?cid=x`)).body.sessions.map(x => x.title), ['Keynote', 'Panel', 'Agents in production'], 'reorder');
+  await post(S, { key: hostKey, action: 'status', id: k.id, status: 'live' });
+  await post(S, { key: hostKey, action: 'status', id: a.id, status: 'live' });
+  v = (await get(`/events/${code}?cid=x`)).body;
+  assert.equal(v.sessions.filter(x => x.status === 'live').length, 1, 'only one live session');
+  assert.equal(v.sessions.find(x => x.id === k.id).status, 'done');
+  // questions per session
+  assert.equal((await post(Q, { cid: 's1', text: 'Question for a ghost session', sessionId: 'nope' })).status, 400, 'sessionId must belong to the event');
+  assert.equal((await post(Q, { cid: 's1', text: 'How do agents handle errors?', sessionId: a.id })).status, 200);
+  const qa = (await get(`/events/${code}?cid=s1`)).body.questions.find(q => q.text.startsWith('How do agents'));
+  assert.equal(qa.sessionId, a.id);
+  await post(`${Q}/${qa.id}/vote`, { cid: 's2' });
+  await post(`${Q}/${qa.id}/action`, { key: hostKey, action: 'pin' });
+  assert.equal((await post(`${Q}/${qa.id}/action`, { key: hostKey, action: 'move', sessionId: k.id })).status, 200);
+  let moved = (await get(`/events/${code}?cid=s1`)).body.questions.find(q => q.id === qa.id);
+  assert.deepEqual([moved.sessionId, moved.votes, moved.pinned], [k.id, 2, true], 'moving keeps votes and pin');
+  // deleting a session keeps its questions (back to the whole meetup)
+  await post(S, { key: hostKey, action: 'delete', id: k.id });
+  v = (await get(`/events/${code}?cid=s1`)).body;
+  assert.equal(v.sessions.length, 2);
+  assert.equal(v.questions.find(q => q.id === qa.id).sessionId, null);
+  assert.deepEqual(v.sessions.map(x => x.order), [0, 1], 'orders reindexed');
+  // limit: 20 sessions, the 21st is refused
+  for (let i = v.sessions.length; i < 20; i++) assert.equal((await post(S, { key: hostKey, action: 'create', title: `Session ${i + 1}` })).status, 200);
+  assert.equal((await post(S, { key: hostKey, action: 'create', title: 'One too many' })).status, 400);
+  // screen setting
+  await post(`/events/${code}/settings`, { key: hostKey, screenSessionOnly: true });
+  assert.equal((await get(`/events/${code}?cid=x`)).body.screenSessionOnly, true);
+  // clean up for the next tests
+  for (const x of (await get(`/events/${code}?cid=x`)).body.sessions) await post(S, { key: hostKey, action: 'delete', id: x.id });
+  await post(`${Q}/${qa.id}/action`, { key: hostKey, action: 'delete' });
+});
+
 test('1.1 CSV export (host only) and 1.5 stats', async () => {
   assert.equal((await get(`/events/${code}/export.csv`)).status, 403);
   const r = await get(`/events/${code}/export.csv?key=${hostKey}&sep=;`);
   assert.equal(r.status, 200);
   assert.match(r.body, /What about pricing\?/);
-  assert.match(r.body, /Rank;Question;Author;Votes/);
+  assert.match(r.body, /Rank;Question;Session;Author;Votes/);
   const s = (await get(`/events/${code}?key=${hostKey}`)).body.stats;
   assert.equal(s.questions, 1);
   assert.ok(s.votes >= 4);
