@@ -1,3 +1,11 @@
+/*!
+ * Meetup Q&A (ORBii Interact)
+ * Copyright (c) 2026 ORBii SAS. All rights reserved.
+ * Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE): free for any noncommercial use.
+ * Commercial use requires a separate license from ORBii SAS: info@orbii.tech
+ * https://polyformproject.org/licenses/noncommercial/1.0.0
+ */
+
 // Meetup Q&A — client (vanilla JS, no dependencies)
 const $app = document.getElementById('app');
 const safe = (k, v) => { try { return v === undefined ? localStorage.getItem(k) : localStorage.setItem(k, v); } catch { return null; } };

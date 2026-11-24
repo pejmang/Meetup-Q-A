@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "description": "Q&A et sondages en direct pour meetups (type Slido), sans dépendance",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
-  "engines": { "node": ">=18" },
-  "license": "UNLICENSED",
-  "private": true
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "private": true,
+  "author": "ORBii SAS <info@orbii.tech>"
 }

@@ -1,3 +1,11 @@
+/*!
+ * Meetup Q&A (ORBii Interact)
+ * Copyright (c) 2026 ORBii SAS. All rights reserved.
+ * Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE): free for any noncommercial use.
+ * Commercial use requires a separate license from ORBii SAS: info@orbii.tech
+ * https://polyformproject.org/licenses/noncommercial/1.0.0
+ */
+
 :root {
   --bg: #f3f5f9; --card: #fff; --ink: #151a2d; --muted: #6a7088; --line: #e3e6f0;
   --brand: #0b2a5b; --brand-ink: #fff; --accent: #c8a24a; --accent-ink: #0b2a5b; --ok: #12a05c; --warn: #d98a00; --bad: #d63a3a;
