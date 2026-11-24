@@ -20,21 +20,38 @@ const ADMIN = 'test-admin-pw';
 const PORT = 3900 + Math.floor(Math.random() * 90);
 const B = `http://127.0.0.1:${PORT}/v2.0/api`;
 let proc, dataDir;
+// Fake Google: our own RSA key and JWKS endpoint, to test ID-token verification end to end
+const crypto = require('node:crypto');
+const { privateKey: gKey, publicKey: gPub } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+const GJWK = { ...gPub.export({ format: 'jwk' }), kid: 'test-kid', alg: 'RS256', use: 'sig' };
+const CERTS_PORT = PORT + 100;
+let certsServer;
+function googleToken(claims, { key = gKey, kid = 'test-kid' } = {}) {
+  const now = Math.floor(Date.now() / 1000);
+  const enc = o => Buffer.from(JSON.stringify(o)).toString('base64url');
+  const head = enc({ alg: 'RS256', kid, typ: 'JWT' });
+  const body = enc({ iss: 'https://accounts.google.com', aud: 'test-client', sub: '123', email_verified: true, name: 'Alice Martin', iat: now, exp: now + 3600, ...claims });
+  return `${head}.${body}.${crypto.sign('RSA-SHA256', Buffer.from(head + '.' + body), key).toString('base64url')}`;
+}
 
 const post = async (p, body, headers = {}) => { const r = await fetch(B + p, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) }); return { status: r.status, body: await r.json().catch(() => ({})) }; };
 const get = async p => { const r = await fetch(B + p); return { status: r.status, body: r.headers.get('content-type')?.includes('json') ? await r.json() : await r.text() }; };
 
 function start(env) {
   return new Promise((resolve, reject) => {
-    const p = spawn(process.execPath, [SERVER], { env: { ...process.env, PORT: String(PORT), DATA_DIR: dataDir, BASE_PATH: '/v2.0', ADMIN_PASSWORD: ADMIN, LOGIN_LIMIT_PER_MIN: '100', ...env } });
+    const p = spawn(process.execPath, [SERVER], { env: { ...process.env, PORT: String(PORT), DATA_DIR: dataDir, BASE_PATH: '/v2.0', ADMIN_PASSWORD: ADMIN, LOGIN_LIMIT_PER_MIN: '100', GOOGLE_CLIENT_ID: 'test-client', GOOGLE_CERTS_URL: `http://127.0.0.1:${CERTS_PORT}/certs`, ...env } });
     p.stdout.on('data', d => { if (String(d).includes('ready')) resolve(p); });
     p.on('exit', c => reject(new Error('server exited ' + c)));
   });
 }
 const stop = p => new Promise(r => { p.on('exit', r); p.kill('SIGTERM'); });
 
-before(async () => { dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qa-test-')); proc = await start({}); });
-after(async () => { if (proc) await stop(proc); fs.rmSync(dataDir, { recursive: true, force: true }); });
+before(async () => {
+  certsServer = require('node:http').createServer((q, r) => { r.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=60' }); r.end(JSON.stringify({ keys: [GJWK] })); });
+  await new Promise(r => certsServer.listen(CERTS_PORT, '127.0.0.1', r));
+  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qa-test-')); proc = await start({});
+});
+after(async () => { if (certsServer) certsServer.close(); if (proc) await stop(proc); fs.rmSync(dataDir, { recursive: true, force: true }); });
 
 test('0.1 refuses to start without ADMIN_PASSWORD', () => {
   const r = spawnSync(process.execPath, [SERVER], { env: { ...process.env, ADMIN_PASSWORD: '', PORT: '0' }, timeout: 5000 });
@@ -279,6 +296,33 @@ test('agenda: sessions CRUD, one live at a time, max 20, questions per session, 
   // clean up for the next tests
   for (const x of (await get(`/events/${code}?cid=x`)).body.sessions) await post(S, { key: hostKey, action: 'delete', id: x.id });
   await post(`${Q}/${qa.id}/action`, { key: hostKey, action: 'delete' });
+});
+
+test('self-service registration: Google sign-in verified server-side, pro e-mail only, terms required, 3 spaces max', async () => {
+  const info = (await get('/info')).body;
+  assert.equal(info.googleClientId, 'test-client');
+  const reg = (credential, extra = {}) => post('/register', { credential, title: 'Team meetup', acceptTerms: true, termsVersion: info.termsVersion, ...extra });
+  assert.equal((await reg(googleToken({ email: 'bob@gmail.com' }))).body.error, 'err.regProEmail', 'Gmail refused');
+  assert.equal((await reg(googleToken({ email: 'bob@free.fr' }))).body.error, 'err.regProEmail', 'Free refused');
+  assert.equal((await reg(googleToken({ email: 'alice@acme.io', aud: 'someone-else' }))).status, 401, 'token for another app refused');
+  assert.equal((await reg(googleToken({ email: 'alice@acme.io', exp: 1000 }))).status, 401, 'expired token refused');
+  assert.equal((await reg(googleToken({ email: 'alice@acme.io', email_verified: false }))).body.error, 'err.regEmailUnverified');
+  const forged = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey;
+  assert.equal((await reg(googleToken({ email: 'alice@acme.io' }, { key: forged }))).status, 401, 'forged signature refused');
+  assert.equal((await reg(googleToken({ email: 'alice@acme.io' }), { acceptTerms: false })).body.error, 'err.regTerms', 'terms must be accepted');
+  const ok = await reg(googleToken({ email: 'Alice@ACME.io' }));
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.email, 'alice@acme.io');
+  assert.ok(ok.body.hostPassword.length >= 10, 'random host password generated');
+  assert.equal((await post(`/events/${ok.body.code}/host-login`, { password: ok.body.hostPassword })).body.hostKey, ok.body.hostKey);
+  const ev = (await get(`/events/${ok.body.code}?key=${ok.body.hostKey}`)).body;
+  assert.ok(ev.polls.some(p => p.persistent), 'event NPS created');
+  const admin = (await get(`/events?token=${token}`)).body.events.find(e => e.code === ok.body.code);
+  assert.equal(admin.owner.email, 'alice@acme.io', 'admin sees the owner');
+  assert.equal((await get('/events')).body.events.find(e => e.code === ok.body.code).owner, undefined, 'owner hidden from the public list');
+  await reg(googleToken({ email: 'alice@acme.io' })); await reg(googleToken({ email: 'alice@acme.io' }));
+  assert.equal((await reg(googleToken({ email: 'alice@acme.io' }))).body.error, 'err.regMax', 'max 3 active spaces per organiser');
+  for (const e of (await get(`/events?token=${token}`)).body.events.filter(e => e.owner)) await post(`/events/${e.code}/settings`, { token, delete: true });
 });
 
 test('1.1 CSV export (host only) and 1.5 stats', async () => {

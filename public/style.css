@@ -531,3 +531,13 @@ body.screen .react { background: color-mix(in srgb, #fff 12%, var(--bg)); }
 @media (prefers-reduced-motion: reduce) { .q.hl-out, .main.has-hl > .q:not(.hl) { animation: none; transition: none; transform: none; } }
 .demo-banner { padding: 8px 12px; border-radius: 10px; font-size: .86rem; background: color-mix(in srgb, #7b5cd6 12%, var(--card)); border: 1px solid color-mix(in srgb, #7b5cd6 45%, transparent); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ===== Registration & terms ===== */
+.hero .btn.primary { margin-top: 12px; padding: 12px 22px; font-size: 1rem; border-radius: 99px; }
+.reg .gbtn { min-height: 44px; }
+.reg-who { padding: 10px 12px; border-radius: 10px; overflow-wrap: anywhere; }
+.reg-who.ok { background: color-mix(in srgb, var(--ok) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--ok) 45%, transparent); }
+.reg-who.ko { background: color-mix(in srgb, var(--bad) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--bad) 45%, transparent); }
+.reg-terms { align-items: flex-start; } .reg-terms input { margin-top: 3px; }
+.reg-done .pw { font: 700 1.3rem ui-monospace, monospace; letter-spacing: .06em; }
+.terms h2 { font-size: 1.02rem; margin: 18px 0 4px; } .terms p { margin: 0; line-height: 1.55; }
