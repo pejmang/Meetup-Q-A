@@ -326,6 +326,19 @@ test('self-service registration: Google sign-in verified server-side, any verifi
   assert.equal((await get('/events')).body.events.find(e => e.code === ok.body.code).owner, undefined, 'owner hidden from the public list');
   await reg(googleToken({ email: 'alice@acme.io' })); await reg(googleToken({ email: 'alice@acme.io' }));
   assert.equal((await reg(googleToken({ email: 'alice@acme.io' }))).body.error, 'err.regMax', 'max 3 active spaces per organiser');
+  // organisers access their spaces with Google (no password) and can generate a new host password
+  const mine = await post('/my-spaces', { credential: googleToken({ email: 'alice@acme.io' }) });
+  assert.equal(mine.status, 200);
+  assert.equal(mine.body.spaces.length, 3, 'lists only the spaces of this Google account');
+  assert.ok(mine.body.spaces[0].hostKey, 'gives host access without the password');
+  assert.equal((await post('/my-spaces', { credential: googleToken({ email: 'eve@other.io', sub: 'eve' }) })).body.spaces.length, 0, 'another account sees nothing');
+  assert.equal((await post('/my-spaces', { credential: googleToken({ email: 'alice@acme.io' }, { key: forged }) })).status, 401, 'forged token refused');
+  const sp = mine.body.spaces.find(x => x.code === ok.body.code);
+  assert.equal((await post('/my-password', { credential: googleToken({ email: 'eve@other.io', sub: 'eve' }), code: sp.code })).status, 403, 'not the owner');
+  const np = await post('/my-password', { credential: googleToken({ email: 'alice@acme.io' }), code: sp.code });
+  assert.equal(np.status, 200);
+  assert.equal((await post(`/events/${sp.code}/host-login`, { password: ok.body.hostPassword })).status, 401, 'old host password no longer works');
+  assert.equal((await post(`/events/${sp.code}/host-login`, { password: np.body.hostPassword })).body.hostKey, np.body.hostKey, 'new password works');
   for (const e of (await get(`/events?token=${token}`)).body.events.filter(e => e.owner)) await post(`/events/${e.code}/settings`, { token, delete: true });
 });
 

@@ -424,6 +424,29 @@ const server = http.createServer(async (req, res) => {
         setAdminPassword(next);
         return json(res, 200, { ok: true, token: adminToken() });
       }
+      // Organisers: Google sign-in gives access to the spaces they own (no password needed), and lets them
+      // generate a new host password (old one stops working, co-hosts using it are signed out)
+      if (req.method === 'POST' && (parts[1] === 'my-spaces' || parts[1] === 'my-password')) {
+        if (limited('reg:' + ip, LOGIN_LIMIT * 3)) return json(res, 429, { error: 'err.rate' });
+        const b = await body(req);
+        let who;
+        try { who = await verifyGoogleIdToken(b.credential, GOOGLE_CLIENT_ID); } catch (e) { return json(res, 401, { error: /^err\./.test(e.message) ? e.message : 'err.regToken' }); }
+        const owns = e => !!e.owner && (e.owner.sub === who.sub || (!e.owner.sub && e.owner.email === who.email));
+        if (parts[1] === 'my-spaces') {
+          const list = Object.values(events).filter(owns).sort((a, b) => b.created - a.created)
+            .map(e => ({ code: e.code, title: e.title, created: e.created, ended: !!e.ended, open: e.open, hostKey: e.hostKey,
+              questions: e.questions.filter(q => q.status !== 'pending').length, online: onlineCount(e.code) }));
+          return json(res, 200, { email: who.email, name: who.name, spaces: list });
+        }
+        const ev = events[String(b.code || '').toUpperCase()];
+        if (!ev || !owns(ev)) return json(res, 403, { error: 'err.notOwner' });
+        const hostPassword = Array.from(crypto.randomBytes(10), x => 'abcdefghjkmnpqrstuvwxyz23456789'[x % 31]).join('');
+        ev.hostPass = hashPw(hostPassword);
+        ev.hostKey = crypto.randomBytes(12).toString('hex');
+        for (const [r, c] of clients) if (c.code === ev.code && c.host) { r.end(); clients.delete(r); }
+        save();
+        return json(res, 200, { code: ev.code, title: ev.title, hostPassword, hostKey: ev.hostKey });
+      }
       // Event list (public; admin also receives host keys)
       if (req.method === 'GET' && parts.length === 2 && parts[1] === 'events') {
         const admin = okToken(url.searchParams.get('token'));

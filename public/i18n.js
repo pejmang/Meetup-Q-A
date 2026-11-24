@@ -9,6 +9,12 @@
 // Meetup Q&A v2 — translations (English / French)
 window.I18N = {
   en: {
+    'my.title': 'My spaces', 'my.sub': 'Organisers: access your spaces with Google — no password needed.',
+    'my.signIn': 'Sign in with the Google account you used to create your space', 'my.signInHint': 'You will see your spaces and can open the host view or generate a new host password.',
+    'my.none': 'No space is linked to this Google account yet.', 'my.newPw': 'New host password',
+    'my.newPwConfirm': 'Generate a new host password for "{title}"? The current one will stop working and co-hosts using it will be signed out.',
+    'my.newPwDone': 'New host password', 'my.forgot': 'Forgot the password? Organisers can', 'my.forgotLink': 'access their spaces with Google',
+    'my.already': 'Already have a space?', 'my.reminder': 'You can always get back to it with Google in "My spaces".', 'err.notOwner': 'This space belongs to another account',
     'land.tagline': 'Live Q&A, polls, NPS and audience analytics for your meetups and events.', 'land.join': 'Join',
     'land.f1': 'Live Q&A with upvotes', 'land.f2': '6 poll formats & NPS', 'land.f3': 'Live audience analytics', 'land.f4': 'Agenda & sessions',
     'land.demoT': 'Try the live demo', 'land.demoP': 'Simulated events with agenda, questions, polls and live analytics — try everything.',
@@ -180,6 +186,12 @@ window.I18N = {
     'err.limit3': 'You can send up to 3 answers', 'err.route': 'Unknown route', 'err.invalid': 'Invalid request',
   },
   fr: {
+    'my.title': 'Mes espaces', 'my.sub': 'Organisateurs : accédez à vos espaces avec Google — sans mot de passe.',
+    'my.signIn': 'Connectez-vous avec le compte Google utilisé pour créer votre espace', 'my.signInHint': 'Vous verrez vos espaces et pourrez ouvrir la vue animateur ou générer un nouveau mot de passe animateur.',
+    'my.none': 'Aucun espace n\'est encore lié à ce compte Google.', 'my.newPw': 'Nouveau mot de passe animateur',
+    'my.newPwConfirm': 'Générer un nouveau mot de passe animateur pour « {title} » ? L\'actuel ne fonctionnera plus et les co-animateurs qui l\'utilisent seront déconnectés.',
+    'my.newPwDone': 'Nouveau mot de passe animateur', 'my.forgot': 'Mot de passe oublié ? Les organisateurs peuvent', 'my.forgotLink': 'accéder à leurs espaces avec Google',
+    'my.already': 'Vous avez déjà un espace ?', 'my.reminder': 'Vous pourrez toujours y revenir avec Google dans « Mes espaces ».', 'err.notOwner': 'Cet espace appartient à un autre compte',
     'land.tagline': 'Questions-réponses, sondages, NPS et analytics d\'audience en direct pour vos meetups et événements.', 'land.join': 'Rejoindre',
     'land.f1': 'Q&A en direct avec votes', 'land.f2': '6 formats de sondage & NPS', 'land.f3': 'Analytics d\'audience en direct', 'land.f4': 'Agenda & sessions',
     'land.demoT': 'Tester la démo', 'land.demoP': 'Des événements simulés avec agenda, questions, sondages et analytics en direct — testez tout.',

@@ -84,12 +84,12 @@ function openModal(content, { label } = {}) {
 function copyBtn(text, label) {
   return h('button', { type: 'button', class: 'btn small copy', onclick: e => { navigator.clipboard?.writeText(text); const b = e.currentTarget; b.textContent = '✓ ' + t('host.copied'); setTimeout(() => { b.textContent = '📋 ' + (label || t('modal.copy')); }, 1600); } }, '📋 ' + (label || t('modal.copy')));
 }
-function createdModal({ code, hostKey, hostPassword, title, demo }) {
+function createdModal({ code, hostKey, hostPassword, title, demo, heading, icon }) {
   const guestUrl = `${shareBase()}/e/${code}`, hostUrl = `${shareBase()}/e/${code}/host`;
   const all = `${title}\n${t('screen.code')}: ${code}\n${t('login.hostPw')}: ${hostPassword}\n${t('reg.guestLink')}: ${guestUrl}\n${t('reg.hostLink')}: ${hostUrl}`;
   openModal(close => h('div', { class: 'created' },
-    h('div', { class: 'created-head' }, h('div', { class: 'created-burst', 'aria-hidden': 'true' }, demo ? '🎭' : '🎉'),
-      h('h2', {}, demo ? t('modal.demoCreated') : t('modal.created')), h('p', { class: 'muted' }, title)),
+    h('div', { class: 'created-head' }, h('div', { class: 'created-burst', 'aria-hidden': 'true' }, icon || (demo ? '🎭' : '🎉')),
+      h('h2', {}, heading || (demo ? t('modal.demoCreated') : t('modal.created'))), h('p', { class: 'muted' }, title)),
     h('div', { class: 'created-grid' },
       h('div', { class: 'created-code' }, h('span', { class: 'muted' }, t('screen.code')), h('b', {}, code), qrEl(guestUrl)),
       h('div', { class: 'stack' },
@@ -142,6 +142,7 @@ function route() {
     return live(code, p[2] === 'screen' ? 'screen' : p[2] === 'host' ? 'host' : 'guest');
   }
   if (p[0] === 'register') return registerPage();
+  if (p[0] === 'my') return mySpacesPage();
   if (p[0] === 'terms') return termsPage();
   home();
 }
@@ -214,7 +215,7 @@ function home() {
           h('a', { class: 'btn small', href: 'https://github.com/pejmang/Meetup-Q-A', target: '_blank', rel: 'noopener' }, t('land.ossBtn')),
           h('div', { class: 'muted' }, 'PolyForm Noncommercial 1.0.0')]),
         card('✨', t('land.spaceT'), t('land.spaceP'), [
-          INFO.googleClientId ? h('button', { class: 'btn primary small', onclick: () => go('/register') }, t('reg.cta'))
+          INFO.googleClientId ? [h('button', { class: 'btn primary small', onclick: () => go('/register') }, t('reg.cta')), link('/my', '🗂 ' + t('my.title'), { class: 'btn small' })]
             : h('a', { class: 'btn primary small', href: requestHref }, t('land.request')),
           h('div', { class: 'muted' }, t('land.spaceNote'))])));
   }
@@ -252,7 +253,8 @@ function home() {
       h('div', { class: 'tabs', role: 'tablist' }, [['host', '🎛 ' + t('login.tabHost')], ['admin', '🔐 ' + t('login.tabAdmin')]].map(([k, label]) =>
         h('button', { type: 'button', class: 'tab', role: 'tab', 'aria-selected': String(st.loginMode === k), onclick: () => { st.loginMode = k; draw(); document.querySelector('[data-keep="pwd"]')?.focus(); } }, label))),
       h('div', { class: 'muted' }, st.loginMode === 'admin' ? t('login.adminHint') : t('login.hostHint')),
-      st.loginMode === 'host' && hostCodeIn, pwd, h('button', { class: 'btn primary' }, t('login.submit')));
+      st.loginMode === 'host' && hostCodeIn, pwd, h('button', { class: 'btn primary' }, t('login.submit')),
+      st.loginMode === 'host' && INFO.googleClientId && h('div', { class: 'muted forgot' }, t('my.forgot'), ' ', link('/my', '🗂 ' + t('my.forgotLink'))));
 
     const pwIn = (k, ph, ac) => h('input', { type: 'password', 'data-keep': k, placeholder: ph, 'aria-label': ph, autocomplete: ac, style: fieldStyle });
     const [cur, nw, cf] = [pwIn('apw0', t('apw.current'), 'current-password'), pwIn('apw1', t('apw.new'), 'new-password'), pwIn('apw2', t('apw.confirm'), 'new-password')];
@@ -290,8 +292,9 @@ function home() {
 
     document.body.classList.toggle('admin-mode', st.admin);
     $app.replaceChildren(...[st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin'))].filter(Boolean), h('div', { class: 'wrap narrow' }, top,
+      login && h('div', { class: 'login-top' }, login),   // a host link / sign-in request shows the form first
       st.admin ? h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline'))) : landing(),
-      login, pwCard, create,
+      pwCard, create,
       h('h2', {}, t('home.live', { n: liveEv.length })),
       liveEv.length ? h('div', { class: 'stack' }, liveEv.map(eventCard)) : h('p', { class: 'empty' }, st.loaded ? t('home.noLive') : t('common.loading')),
       st.admin && h('form', { class: 'card row-form', onsubmit: e => { e.preventDefault(); if (codeIn.value.trim()) go('/e/' + codeIn.value.trim().toUpperCase()); } },
@@ -301,25 +304,67 @@ function home() {
   draw(); refresh(); infoReady.then(() => { if (onHome()) draw(); });
 }
 
+// ---------- Google sign-in (Google Identity Services) ----------
+function googleSignIn(el, onCredential) {
+  const init = () => {
+    window.google.accounts.id.initialize({ client_id: INFO.googleClientId, callback: r => onCredential(r.credential), ux_mode: 'popup' });
+    window.google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', locale: LANG });
+  };
+  if (window.google && window.google.accounts) return init();
+  if (!document.getElementById('gsi')) document.head.append(h('script', { id: 'gsi', src: 'https://accounts.google.com/gsi/client', async: true, onload: () => init() }));
+  else document.getElementById('gsi').addEventListener('load', init);
+}
+
+// ---------- My spaces (organisers, via Google) ----------
+function mySpacesPage() {
+  document.title = t('my.title') + ' — Meetup Q&A';
+  const st = { cred: null, data: null, busy: false };
+  const load = async () => { st.busy = true; draw(); try { st.data = await api('/my-spaces', { credential: st.cred }); } catch { st.cred = null; } st.busy = false; draw(); };
+  function draw() {
+    const wrap = h('div', { class: 'wrap narrow my' },
+      h('div', { class: 'between hometop' }, link('/', '← ' + t('common.home')), langBtn()),
+      h('div', { class: 'hero' }, h('h1', {}, '🗂 ' + t('my.title')), h('p', { class: 'muted' }, t('my.sub'))));
+    if (!INFO.googleClientId) { wrap.append(h('div', { class: 'card' }, '🔒 ' + t('reg.closed')), brandFooter()); return $app.replaceChildren(wrap); }
+    if (!st.data) {
+      const gb = h('div', { class: 'gbtn' });
+      wrap.append(h('div', { class: 'card stack' }, h('b', {}, t('my.signIn')), h('p', { class: 'muted', style: 'margin:0' }, t('my.signInHint')), st.busy ? h('p', {}, t('common.loading')) : gb));
+      if (!st.busy) setTimeout(() => googleSignIn(gb, c => { st.cred = c; load(); }), 0);
+    } else {
+      const sp = st.data.spaces;
+      wrap.append(h('div', { class: 'reg-who ok' }, '✅ ', h('b', {}, st.data.name || ''), ' ', st.data.email),
+        sp.length ? h('div', { class: 'stack', style: 'margin-top:12px' }, sp.map(x => h('article', { class: `card ev ${x.ended ? 'ended' : ''}` },
+          h('div', { class: 'ev-main' }, h('b', {}, x.title), h('div', { class: 'muted' }, t('home.stats', { q: x.questions, o: x.online }) + (x.ended ? ' · ' + t('home.ended') : '')), h('span', { class: 'code' }, x.code)),
+          h('div', { class: 'row-actions', style: 'margin:0' },
+            h('button', { class: 'btn primary small', onclick: () => { safe('key:' + x.code, x.hostKey); go(`/e/${x.code}/host`); } }, '🎛 ' + t('reg.openHost')),
+            h('button', { class: 'btn small', onclick: async () => {
+              if (!confirm(t('my.newPwConfirm', { title: x.title }))) return;
+              try {
+                const r = await api('/my-password', { credential: st.cred, code: x.code });
+                safe('key:' + r.code, r.hostKey); x.hostKey = r.hostKey;
+                createdModal({ code: r.code, hostKey: r.hostKey, hostPassword: r.hostPassword, title: r.title, heading: t('my.newPwDone'), icon: '🔑' });
+              } catch (e) { if (/regToken/.test(String(e && e.message))) { st.data = null; st.cred = null; draw(); } }
+            } }, '🔑 ' + t('my.newPw'))))))
+          : h('div', { class: 'card', style: 'margin-top:12px' }, t('my.none'), ' ', link('/register', '✨ ' + t('reg.cta'))),
+        h('div', { class: 'row-actions', style: 'justify-content:center;margin-top:14px' }, link('/register', '✨ ' + t('reg.cta'), { class: 'btn small' })));
+    }
+    wrap.append(brandFooter());
+    $app.replaceChildren(wrap);
+  }
+  draw();
+  infoReady.then(() => { if (!st.data && !st.busy) draw(); });
+}
+
 // ---------- Self-service registration ----------
 function registerPage() {
   document.title = t('reg.title') + ' — Meetup Q&A';
   const st = { cred: null, who: null, title: '', moderate: false, accept: false, done: null, busy: false };
   const decode = jwt => { try { return JSON.parse(decodeURIComponent(escape(atob(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))); } catch { return null; } };
   const isPro = email => { const d = String(email || '').toLowerCase().split('@')[1] || ''; return !!d && !(INFO.freeDomains || []).includes(d); };   // freeDomains is empty unless REQUIRE_PRO_EMAIL=1
-  function googleButton(el) {
-    const init = () => {
-      window.google.accounts.id.initialize({ client_id: INFO.googleClientId, callback: r => { st.cred = r.credential; st.who = decode(r.credential); draw(); }, ux_mode: 'popup' });
-      window.google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', locale: LANG });
-    };
-    if (window.google && window.google.accounts) return init();
-    if (!document.getElementById('gsi')) document.head.append(h('script', { id: 'gsi', src: 'https://accounts.google.com/gsi/client', async: true, onload: () => init() }));
-    else document.getElementById('gsi').addEventListener('load', init);
-  }
+  const googleButton = el => googleSignIn(el, c => { st.cred = c; st.who = decode(c); draw(); });
   function draw() {
     const wrap = h('div', { class: 'wrap narrow reg' },
       h('div', { class: 'between hometop' }, link('/', '← ' + t('common.home')), langBtn()),
-      h('div', { class: 'hero' }, h('h1', {}, '✨ ' + t('reg.title')), h('p', { class: 'muted' }, t('reg.sub'))));
+      h('div', { class: 'hero' }, h('h1', {}, '✨ ' + t('reg.title')), h('p', { class: 'muted' }, t('reg.sub')), h('p', { class: 'muted' }, t('my.already'), ' ', link('/my', '🗂 ' + t('my.title')))));
     if (!INFO.googleClientId) { wrap.append(h('div', { class: 'card' }, '🔒 ' + t('reg.closed')), brandFooter()); return $app.replaceChildren(wrap); }
     if (st.done) {
       const hostUrl = `${shareBase()}/e/${st.done.code}/host`, guestUrl = `${shareBase()}/e/${st.done.code}`;
@@ -328,7 +373,7 @@ function registerPage() {
         h('h2', { style: 'margin:0' }, '🎉 ' + t('reg.doneTitle')),
         h('div', { class: 'kv' }, h('span', { class: 'muted' }, t('screen.code')), h('b', { class: 'bigcode' }, st.done.code)),
         h('div', { class: 'kv' }, h('span', { class: 'muted' }, t('login.hostPw')), h('b', { class: 'pw' }, st.done.hostPassword)),
-        h('div', { class: 'banner' }, '⚠️ ' + t('reg.savePw')),
+        h('div', { class: 'banner' }, '⚠️ ' + t('reg.savePw'), ' ', t('my.reminder')),
         h('div', { class: 'muted' }, t('reg.hostLink') + ' : ', h('a', { href: hostUrl }, hostUrl)),
         h('div', { class: 'muted' }, t('reg.guestLink') + ' : ', h('a', { href: guestUrl }, guestUrl)),
         h('div', { class: 'row-actions' },
