@@ -51,6 +51,10 @@ function h(tag, props = {}, ...kids) {
   for (const kid of kids.flat(Infinity)) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(kid));
   return el;
 }
+// Discreet brand signature, as most SaaS tools do ("Powered by …")
+const brandFooter = () => h('footer', { class: 'brand-foot' },
+  h('span', {}, '© 2026 ORBii SAS'), h('span', { 'aria-hidden': 'true' }, ' · '),
+  h('a', { href: 'https://orbii.tech', target: '_blank', rel: 'noopener' }, t('brand.powered'), ' ', h('b', {}, 'ORBii.tech')));
 let toastT;
 function toast(msg) {
   const el = document.getElementById('toast'); el.textContent = msg; el.classList.add('show');
@@ -213,7 +217,7 @@ function home() {
       liveEv.length ? h('div', { class: 'stack' }, liveEv.map(eventCard)) : h('p', { class: 'empty' }, st.loaded ? t('home.noLive') : t('common.loading')),
       h('form', { class: 'card row-form', onsubmit: e => { e.preventDefault(); if (codeIn.value.trim()) go('/e/' + codeIn.value.trim().toUpperCase()); } },
         codeIn, h('button', { class: 'btn' }, t('home.joinCode'))),
-      st.admin && done.length > 0 && h('div', {}, h('h2', {}, t('home.endedList', { n: done.length })), h('div', { class: 'stack' }, done.map(eventCard)))));
+      st.admin && done.length > 0 && h('div', {}, h('h2', {}, t('home.endedList', { n: done.length })), h('div', { class: 'stack' }, done.map(eventCard))), brandFooter()));
   }
   draw(); refresh();
 }
@@ -914,7 +918,7 @@ function live(code, mode) {
       h('p', { class: 'muted foot' }, link('/', '← ' + t('common.home')), ' · ',
         isHost
           ? h('a', { href: BASE + '/e/' + d.code, onclick: e => { e.preventDefault(); safe('key:' + d.code, ''); go('/e/' + d.code); } }, t('host.signOut'))
-          : link('/?host=' + d.code, '🎛 ' + t('guest.hostSignIn')))), fab, sheet);
+          : link('/?host=' + d.code, '🎛 ' + t('guest.hostSignIn'))), brandFooter()), fab, sheet);
   }
 
   // ----- Projection screen -----
@@ -944,7 +948,8 @@ function live(code, mode) {
         nowS && h('div', { class: 'screen-now' }, h('span', { class: 'live-dot' }, t('ag.now')), h('b', {}, nowS.title), nowS.speaker && h('span', { class: 'muted' }, '🎤 ' + nowS.speaker)),
         mainBlock),
       h('aside', {}, h('div', { class: 'join-box' }, h('div', { class: 'muted' }, t('screen.joinAt')), h('div', { style: 'font-weight:600;margin:6px 0;overflow-wrap:anywhere' }, joinUrl.replace(/^https?:\/\//, '')),
-        qrEl(joinUrl), h('div', { class: 'muted' }, t('screen.code')), h('div', { class: 'c' }, d.code), h('div', { class: 'muted', style: 'margin-top:8px' }, '● ' + t('screen.online', { n: d.online })))));
+        qrEl(joinUrl), h('div', { class: 'muted' }, t('screen.code')), h('div', { class: 'c' }, d.code), h('div', { class: 'muted', style: 'margin-top:8px' }, '● ' + t('screen.online', { n: d.online })),
+        h('div', { class: 'screen-brand' }, t('brand.powered'), ' ', h('b', {}, 'ORBii.tech')))));
   }
 }
 
