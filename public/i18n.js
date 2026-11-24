@@ -9,6 +9,7 @@
 // Meetup Q&A v2 — translations (English / French)
 window.I18N = {
   en: {
+    'modal.created': 'Event created!', 'modal.demoCreated': 'Demo event created!', 'modal.copy': 'Copy', 'modal.pwOnce': 'Share it with the host now: it will not be shown again.', 'demo.modalTitle': 'Demo — simulated data',
     'reg.cta': 'Create your space', 'reg.title': 'Create your space', 'reg.sub': 'Free for noncommercial use. Sign in with your professional Google account.',
     'reg.closed': 'Self-service registration is not open yet. Contact info@orbii.tech.',
     'reg.step1': 'Sign in with Google', 'reg.step1Hint': 'Professional e-mail addresses only (not Gmail, Outlook, Yahoo, Free, Orange…).',
@@ -171,6 +172,7 @@ window.I18N = {
     'err.limit3': 'You can send up to 3 answers', 'err.route': 'Unknown route', 'err.invalid': 'Invalid request',
   },
   fr: {
+    'modal.created': 'Événement créé !', 'modal.demoCreated': 'Démo créée !', 'modal.copy': 'Copier', 'modal.pwOnce': 'Transmettez-le maintenant à l\'animateur : il ne sera plus affiché.', 'demo.modalTitle': 'Démo — données simulées',
     'reg.cta': 'Créer votre espace', 'reg.title': 'Créer votre espace', 'reg.sub': 'Gratuit pour un usage non commercial. Connectez-vous avec votre compte Google professionnel.',
     'reg.closed': 'L\'inscription en libre-service n\'est pas encore ouverte. Contactez info@orbii.tech.',
     'reg.step1': 'Connexion avec Google', 'reg.step1Hint': 'Adresses e-mail professionnelles uniquement (pas Gmail, Outlook, Yahoo, Free, Orange…).',

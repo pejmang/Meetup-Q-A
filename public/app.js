@@ -60,6 +60,49 @@ const brandFooter = () => h('footer', { class: 'brand-foot' },
   h('span', {}, `© ${copyrightYears()} ORBii SAS`), h('span', { 'aria-hidden': 'true' }, ' · '),
   h('a', { href: 'https://orbii.tech', target: '_blank', rel: 'noopener' }, 'Powered by ', h('b', {}, 'ORBii'), ', ', h('span', { class: 'nowrap' }, 'Smart Tools for a Connected World')),
   h('span', { 'aria-hidden': 'true' }, ' · '), h('a', { href: BASE + '/terms', onclick: e => { e.preventDefault(); go('/terms'); } }, t('reg.termsLink')));
+// ----- Modal dialog (replaces browser alert() popups) -----
+function openModal(content, { label } = {}) {
+  const prev = document.activeElement;
+  const close = () => { bg.remove(); document.removeEventListener('keydown', onKey); prev && prev.focus && prev.focus(); };
+  const onKey = e => {
+    if (e.key === 'Escape') close();
+    if (e.key === 'Tab') {                                   // keep the keyboard focus inside the dialog
+      const f = [...box.querySelectorAll('button, a[href], input, select, textarea')].filter(x => !x.disabled);
+      if (!f.length) return;
+      if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+    }
+  };
+  const box = h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': label || '' },
+    h('button', { class: 'modal-x', 'aria-label': t('common.close'), onclick: () => close() }, '✕'), content(close));
+  const bg = h('div', { class: 'modal-bg', onclick: e => { if (e.target === bg) close(); } }, box);
+  document.body.append(bg);
+  document.addEventListener('keydown', onKey);
+  setTimeout(() => (box.querySelector('[data-autofocus]') || box.querySelector('button.btn')).focus(), 30);
+  return close;
+}
+function copyBtn(text, label) {
+  return h('button', { type: 'button', class: 'btn small copy', onclick: e => { navigator.clipboard?.writeText(text); const b = e.currentTarget; b.textContent = '✓ ' + t('host.copied'); setTimeout(() => { b.textContent = '📋 ' + (label || t('modal.copy')); }, 1600); } }, '📋 ' + (label || t('modal.copy')));
+}
+function createdModal({ code, hostKey, hostPassword, title, demo }) {
+  const guestUrl = `${shareBase()}/e/${code}`, hostUrl = `${shareBase()}/e/${code}/host`;
+  const all = `${title}\n${t('screen.code')}: ${code}\n${t('login.hostPw')}: ${hostPassword}\n${t('reg.guestLink')}: ${guestUrl}\n${t('reg.hostLink')}: ${hostUrl}`;
+  openModal(close => h('div', { class: 'created' },
+    h('div', { class: 'created-head' }, h('div', { class: 'created-burst', 'aria-hidden': 'true' }, demo ? '🎭' : '🎉'),
+      h('h2', {}, demo ? t('modal.demoCreated') : t('modal.created')), h('p', { class: 'muted' }, title)),
+    h('div', { class: 'created-grid' },
+      h('div', { class: 'created-code' }, h('span', { class: 'muted' }, t('screen.code')), h('b', {}, code), qrEl(guestUrl)),
+      h('div', { class: 'stack' },
+        h('div', { class: 'created-pw' }, h('span', { class: 'muted' }, '🔑 ' + t('login.hostPw')),
+          h('div', { class: 'between' }, h('code', {}, hostPassword), copyBtn(hostPassword)),
+          h('small', {}, '⚠️ ' + t('modal.pwOnce'))),
+        h('div', { class: 'created-link' }, h('span', { class: 'muted' }, '👥 ' + t('reg.guestLink')), h('div', { class: 'between' }, h('a', { href: guestUrl, target: '_blank' }, guestUrl.replace(/^https?:\/\//, '')), copyBtn(guestUrl))),
+        h('div', { class: 'created-link' }, h('span', { class: 'muted' }, '🎛 ' + t('reg.hostLink')), h('div', { class: 'between' }, h('a', { href: hostUrl, target: '_blank' }, hostUrl.replace(/^https?:\/\//, '')), copyBtn(hostUrl))))),
+    h('div', { class: 'row-actions created-actions' },
+      h('button', { class: 'btn primary', 'data-autofocus': true, onclick: () => { close(); safe('key:' + code, hostKey); go(`/e/${code}/host`); } }, '🎛 ' + t('reg.openHost')),
+      copyBtn(all, t('reg.copyAll')),
+      h('button', { class: 'btn', onclick: () => close() }, t('common.close')))), { label: t('modal.created') });
+}
 let toastT;
 function toast(msg) {
   const el = document.getElementById('toast'); el.textContent = msg; el.classList.add('show');
@@ -201,11 +244,12 @@ function home() {
     const create = st.admin && h('form', { class: 'card stack', onsubmit: async e => {
       e.preventDefault();
       const pw = st.newPw.trim();
-      const r = await api('/events', { title: titleIn.value, moderation: mod.checked, hostPassword: pw });
+      const title = titleIn.value.trim();
+      const r = await api('/events', { title, moderation: mod.checked, hostPassword: pw });
       safe('key:' + r.code, r.hostKey);
       st.newTitle = ''; st.newPw = genPw(); st.newMod = false;
-      alert(t('create.done', { code: r.code, pw }));
-      go(`/e/${r.code}/host`);
+      refresh();
+      createdModal({ code: r.code, hostKey: r.hostKey, hostPassword: pw, title });
     } }, h('h2', { style: 'margin:0' }, '➕ ' + t('create.title')), titleIn,
       h('div', { class: 'muted' }, t('create.hostPwHint')), hostPwIn,
       h('label', { class: 'row' }, mod, t('create.moderate')), h('button', { class: 'btn primary' }, t('create.submit')),
@@ -214,8 +258,8 @@ function home() {
           const pw = st.newPw.trim();
           const r = await api('/events/demo', { lang: l, hostPassword: pw, days });
           safe('key:' + r.code, r.hostKey); st.newPw = genPw();
-          alert(t('demo.done', { code: r.code, pw }));
-          go(`/e/${r.code}/host`);
+          refresh();
+          createdModal({ code: r.code, hostKey: r.hostKey, hostPassword: pw, title: t('demo.modalTitle'), demo: true });
         } }, (l === 'en' ? '🇬🇧 English' : '🇫🇷 Français') + (days > 1 ? ' · ' + t('demo.days', { n: days }) : '')))));
 
     document.body.classList.toggle('admin-mode', st.admin);
