@@ -6,13 +6,12 @@
 
 ## Live demo
 
-Try it with a fully simulated 3-day event (English, agenda, questions, polls, NPS, live analytics):
+Try it with two fully simulated events (English, agenda, questions, polls, NPS, live analytics). Host password: `demo20272028`.
 
-| View | Link |
-|---|---|
-| 🎛 **Host** (password: `demo20272028`) | **https://interact.orbii.tech/v2.0/e/K4ARN/host** |
-| 👥 Participant | https://interact.orbii.tech/v2.0/e/K4ARN |
-| 📺 Projection screen | https://interact.orbii.tech/v2.0/e/K4ARN/screen |
+| Demo | 🎛 Host | 👥 Participant | 📺 Projection screen |
+|---|---|---|---|
+| **Townhall Tech Q3 2026** — 1,200 people, 25 questions, eNPS | [host](https://interact.orbii.tech/v2.0/e/DKPTZ/host) | [participant](https://interact.orbii.tech/v2.0/e/DKPTZ) | [screen](https://interact.orbii.tech/v2.0/e/DKPTZ/screen) |
+| **AI & Data Meetup** — 3 days, agenda, reset every 30 min | [host](https://interact.orbii.tech/v2.0/e/K4ARN/host) | [participant](https://interact.orbii.tech/v2.0/e/K4ARN) | [screen](https://interact.orbii.tech/v2.0/e/K4ARN/screen) |
 
 The demo data is simulated and may be reset at any time.
 
