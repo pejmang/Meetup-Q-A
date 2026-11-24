@@ -486,7 +486,10 @@ function live(code, mode) {
 
   stream = new EventSource(`${BASE}/api/events/${code}/stream?cid=${cid}${hostParam}${mode === 'screen' ? '&screen=1' : ''}`);
   stream.onmessage = e => {
+    const prevHl = state.data && (state.data.questions.find(q => q.highlighted) || {}).id;
     state.data = JSON.parse(e.data);
+    const nowHl = (state.data.questions.find(q => q.highlighted) || {}).id;
+    if (prevHl && prevHl !== nowHl) { state.leaving = prevHl; clearTimeout(state.leavingT); state.leavingT = setTimeout(() => { state.leaving = null; render(); }, 700); }
     if (isHost && !state.data.host) { safe('key:' + code, ''); toast(t('host.expired')); return go('/?host=' + code); }
     render();
   };
@@ -556,7 +559,7 @@ function live(code, mode) {
         h('button', { class: 'btn small danger', 'aria-label': t('common.delete'), onclick: () => { if (confirm(t('q.deleteConfirm'))) act(q.id, 'delete'); } }, '🗑'));
     }
     const heat = q.votes >= 10 ? 3 : q.votes >= 5 ? 2 : q.votes >= 2 ? 1 : 0;
-    return h('article', { class: `card q heat${heat} ${q.highlighted ? 'hl' : ''} ${q.status} ${state.merging === q.id ? 'merging' : ''}` }, voteBtn,
+    return h('article', { class: `card q heat${heat} ${q.highlighted ? 'hl' : ''} ${state.leaving === q.id && !q.highlighted ? 'hl-out' : ''} ${q.status} ${state.merging === q.id ? 'merging' : ''}` }, voteBtn,
       h('div', { class: 'q-body' }, tags.some(Boolean) && h('div', { class: 'tags' }, tags), h('div', { class: 'q-text' }, q.text),
         h('div', { class: 'muted' }, (q.author || t('q.anonymous')) + (q.mine ? ' ' + t('q.you') : '') + ' · ' + ago(q.ts)),
         !isHost && mode !== 'screen' && q.mergedMine && h('div', { class: 'merged-notice' }, '🔗 ', h('b', {}, t('q.mergedYours')), ' ',
@@ -830,7 +833,6 @@ function live(code, mode) {
       default: list = [...liveQ].sort(byVotes);   // Popular keeps answered questions: the final ranking stays visible
     }
     list = list.filter(inScope);
-    if (!state.q.trim()) list.sort((a, b) => (b.highlighted ? 1 : 0) - (a.highlighted ? 1 : 0));   // stable: keeps the tab's order otherwise
     if (needle) list = list.filter(q => q.text.toLowerCase().includes(needle) || (q.author || '').toLowerCase().includes(needle) || q.merged.some(m => m.text.toLowerCase().includes(needle)));
 
     const stat = (n, label) => h('div', { class: 'stat' }, h('b', {}, n), h('span', {}, label));
@@ -893,7 +895,7 @@ function live(code, mode) {
       h('button', { class: 'tab', role: 'tab', 'aria-selected': String(state.tab === k), onclick: () => { state.tab = k; render(); } }, label, n != null && h('i', {}, n))));
 
     const empty = { all: t('empty.all'), pending: t('empty.pending'), mine: t('empty.mine'), answered: t('empty.answered') }[state.tab] || t('empty.top');
-    const main = h('main', { class: 'main' },
+    const main = h('main', { class: `main ${d.questions.some(q => q.highlighted) ? 'has-hl' : ''}` },
       isHost && state.merging && h('div', { class: 'banner' }, '🔗 ' + t('q.mergeBanner'), ' ', h('button', { class: 'btn small', onclick: () => { state.merging = null; render(); } }, t('common.cancel'))),
       !isHost && pending.some(q => q.mine) && h('div', { class: 'banner' }, '⏳ ' + t('guest.pendingMine', { n: pending.filter(q => q.mine).length })),
       viewSwitch, teaser,
