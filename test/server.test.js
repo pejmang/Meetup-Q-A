@@ -83,6 +83,11 @@ test('0.4 Popular keeps answered questions; 1.3 note; 1.4 merge adds votes', asy
   assert.equal(q.merged.length, 1);
   assert.equal(q.note, 'See the pricing page');
   assert.equal(q.status, 'answered');             // still returned to participants (client keeps it in Popular)
+  const asker = (await get(`/events/${code}?cid=u2`)).body.questions[0];   // u2 asked the duplicate
+  assert.equal(asker.mergedMine, true, 'the asker of a merged question can still find it');
+  assert.equal(asker.merged[0].mine, true);
+  assert.equal(asker.voted, true, 'their vote carried over');
+  assert.equal(q.mergedMine, false);
 });
 
 test('2.x poll types: multi, hidden results, rating, nps, wordcloud, open', async () => {
@@ -164,6 +169,24 @@ test('prepared polls: hidden from participants, editable, launched in one click'
   assert.equal(host.polls.filter(p => p.open && !p.persistent).length, 1, 'previous live poll closed');
   assert.ok(host.polls.find(p => p.persistent).open, 'event NPS stays open');
   assert.equal((await post(`${P}/${draft.id}/action`, { key: hostKey, action: 'launch' })).status, 400, 'launch only once');
+});
+
+test('simulated demo event: admin only, complete and consistent', async () => {
+  assert.equal((await post('/events/demo', { lang: 'en', hostPassword: 'demo1234' })).status, 401);
+  const r = await post('/events/demo', { token, lang: 'en', hostPassword: 'demo1234' });
+  assert.equal(r.status, 200);
+  const v = (await get(`/events/${r.body.code}?key=${r.body.hostKey}`)).body;
+  assert.equal(v.demo, true);
+  assert.match(v.title, /simulated/);
+  assert.ok(v.questions.length >= 9);
+  assert.deepEqual([...new Set(v.polls.map(p => p.type))].sort(), ['choice', 'multi', 'nps', 'open', 'rating', 'wordcloud']);
+  assert.ok(v.polls.some(p => p.draft) && v.polls.some(p => p.persistent && p.open) && v.polls.some(p => p.open && !p.persistent));
+  const s = v.stats;
+  assert.ok(s.timeline.length >= 120 && s.peakOnline > 50);
+  assert.ok(s.activeUsers <= s.participants, 'active participants never exceed connected people');
+  assert.ok(s.nps > 0);
+  assert.equal((await post(`/events/${r.body.code}/host-login`, { password: 'demo1234' })).body.hostKey, r.body.hostKey);
+  assert.equal((await post(`/events/${r.body.code}/settings`, { token, delete: true })).status, 200);
 });
 
 test('1.1 CSV export (host only) and 1.5 stats', async () => {

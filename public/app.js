@@ -77,7 +77,7 @@ let stream = null;
 const appPath = () => location.pathname.startsWith(BASE) ? location.pathname.slice(BASE.length) || '/' : location.pathname;
 function route() {
   if (stream) { stream.close(); stream = null; }
-  document.body.classList.remove('screen', 'report');
+  document.body.classList.remove('screen', 'report', 'host-mode', 'admin-mode');
   const p = appPath().split('/').filter(Boolean);
   if (p[0] === 'e' && p[1]) {
     const code = p[1].toUpperCase();
@@ -116,7 +116,7 @@ function home() {
     if (st.admin && !e.hasHostPassword) bits.push('⚠ ' + t('home.noHostPw'));
     if (e.ended) bits.push(t('home.ended')); else if (!e.open) bits.push(t('home.qClosed'));
     return h('div', { class: `card ev ${e.ended ? 'ended' : ''}` },
-      h('div', { class: 'ev-main' }, h('b', {}, e.title), h('div', { class: 'muted' }, bits.join(' · ')), h('span', { class: 'code' }, e.code)),
+      h('div', { class: 'ev-main' }, h('b', {}, e.demo && h('span', { class: 'tag demo' }, t('demo.badge')), ' ', e.title), h('div', { class: 'muted' }, bits.join(' · ')), h('span', { class: 'code' }, e.code)),
       h('div', { class: 'row-actions', style: 'margin:0' },
         !e.ended && h('button', { class: 'btn primary small', onclick: () => go('/e/' + e.code) }, t('home.join')),
         !st.admin && h('button', { class: 'btn small', onclick: () => { st.login = true; st.loginMode = 'host'; st.hostCode = e.code; draw(); document.querySelector('[data-keep="pwd"]')?.focus(); } }, '🎛 ' + t('home.host')),
@@ -177,9 +177,18 @@ function home() {
       go(`/e/${r.code}/host`);
     } }, h('h2', { style: 'margin:0' }, '➕ ' + t('create.title')), titleIn,
       h('div', { class: 'muted' }, t('create.hostPwHint')), hostPwIn,
-      h('label', { class: 'row' }, mod, t('create.moderate')), h('button', { class: 'btn primary' }, t('create.submit')));
+      h('label', { class: 'row' }, mod, t('create.moderate')), h('button', { class: 'btn primary' }, t('create.submit')),
+      h('div', { class: 'demo-row' }, h('span', { class: 'muted' }, '🎭 ' + t('demo.create')),
+        ['en', 'fr'].map(l => h('button', { type: 'button', class: 'btn small', onclick: async () => {
+          const pw = st.newPw.trim();
+          const r = await api('/events/demo', { lang: l, hostPassword: pw });
+          safe('key:' + r.code, r.hostKey); st.newPw = genPw();
+          alert(t('demo.done', { code: r.code, pw }));
+          go(`/e/${r.code}/host`);
+        } }, l === 'en' ? '🇬🇧 English' : '🇫🇷 Français'))));
 
-    $app.replaceChildren(h('div', { class: 'wrap narrow' }, top,
+    document.body.classList.toggle('admin-mode', st.admin);
+    $app.replaceChildren(st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin')), h('div', { class: 'wrap narrow' }, top,
       h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline'))),
       login, create,
       h('h2', {}, t('home.live', { n: liveEv.length })),
@@ -387,6 +396,7 @@ function live(code, mode) {
     poll: { type: 'choice', question: '', options: ['', ''], hidden: false }, drafts: {}, view: qs.get('view') === 'polls' ? 'polls' : 'questions',
   };
   if (mode === 'screen') document.body.classList.add('screen');
+  if (isHost) document.body.classList.add('host-mode');
 
   stream = new EventSource(`${BASE}/api/events/${code}/stream?cid=${cid}${hostParam}`);
   stream.onmessage = e => {
@@ -420,7 +430,7 @@ function live(code, mode) {
       q.highlighted && h('span', { class: 'tag warn' }, '🎤 ' + t('q.onScreen')),
       q.status === 'answered' && h('span', { class: 'tag ok' }, '✓ ' + t('q.answered')),
       q.status === 'pending' && h('span', { class: 'tag' }, '⏳ ' + t('q.pending')),
-      q.merged.length > 0 && h('span', { class: 'tag' }, '🔗 ' + t('q.mergedN', { n: q.merged.length })),
+      q.merged.length > 0 && h('span', { class: `tag ${q.mergedMine && !isHost ? 'warn' : ''}` }, '🔗 ' + (q.mergedMine && !isHost ? t('q.mergedTag') : t('q.mergedN', { n: q.merged.length }))),
     ];
     const voteBtn = h('button', { class: 'vote', 'aria-pressed': String(q.voted), 'aria-label': `${q.voted ? t('q.unvote') : t('q.upvote')} — ${q.votes}`,
       disabled: q.status === 'pending' || mode === 'screen', onclick: () => { q.voted = !q.voted; q.votes += q.voted ? 1 : -1; render(); post(`/questions/${q.id}/vote`, {}); } },
@@ -428,7 +438,7 @@ function live(code, mode) {
     const reacts = q.status === 'pending' ? null : h('div', { class: 'reacts' }, q.reacts.map(r => h('button', { class: 'react', 'aria-pressed': String(r.mine), 'aria-label': `${t('q.react')} ${r.e}`, disabled: mode === 'screen', onclick: () => post(`/questions/${q.id}/react`, { emoji: r.e }) }, r.e, r.n > 0 && h('i', {}, r.n))));
     const note = q.note && !(state.noteEdit && state.noteEdit.id === q.id) && h('div', { class: 'note' }, h('b', {}, '💬 ' + t('q.hostAnswer')), ' ', q.note);
     const merged = q.merged.length > 0 && mode !== 'screen' && h('details', { class: 'merged' }, h('summary', { class: 'muted' }, t('q.showMerged', { n: q.merged.length })),
-      h('ul', {}, q.merged.map(m => h('li', {}, m.text, h('span', { class: 'muted' }, ' — ' + (m.author || t('q.anonymous')))))));
+      h('ul', {}, q.merged.map(m => h('li', {}, m.text, h('span', { class: 'muted' }, ' — ' + (m.author || t('q.anonymous')) + (m.mine ? ' ' + t('q.you') : ''))))));
     let noteEditor = null;
     if (isHost && state.noteEdit && state.noteEdit.id === q.id) {
       noteEditor = h('form', { class: 'stack note-edit', onsubmit: async e => { e.preventDefault(); await act(q.id, 'note', { note: state.noteEdit.text }); state.noteEdit = null; render(); } },
@@ -453,7 +463,10 @@ function live(code, mode) {
     const heat = q.votes >= 10 ? 3 : q.votes >= 5 ? 2 : q.votes >= 2 ? 1 : 0;
     return h('article', { class: `card q heat${heat} ${q.highlighted ? 'hl' : ''} ${q.status} ${state.merging === q.id ? 'merging' : ''}` }, voteBtn,
       h('div', { class: 'q-body' }, tags.some(Boolean) && h('div', { class: 'tags' }, tags), h('div', { class: 'q-text' }, q.text),
-        h('div', { class: 'muted' }, (q.author || t('q.anonymous')) + (q.mine ? ' ' + t('q.you') : '') + ' · ' + ago(q.ts)), note, noteEditor, merged, reacts, acts));
+        h('div', { class: 'muted' }, (q.author || t('q.anonymous')) + (q.mine ? ' ' + t('q.you') : '') + ' · ' + ago(q.ts)),
+        !isHost && mode !== 'screen' && q.mergedMine && h('div', { class: 'merged-notice' }, '🔗 ', h('b', {}, t('q.mergedYours')), ' ',
+          q.merged.filter(m => m.mine).map(m => '« ' + m.text + ' »').join(' · '), h('div', { class: 'muted' }, t('q.mergedYoursSub'))),
+        note, noteEditor, merged, reacts, acts));
   }
 
   // ----- Poll card -----
@@ -614,7 +627,7 @@ function live(code, mode) {
     const all = d.questions;
     const liveQ = all.filter(q => q.status !== 'pending');
     const pending = all.filter(q => q.status === 'pending');
-    const mine = all.filter(q => q.mine);
+    const mine = all.filter(q => q.mine || q.mergedMine);   // a merged question still belongs to its asker
     const answered = liveQ.filter(q => q.status === 'answered');
     const byVotes = (a, b) => (b.pinned - a.pinned) || (b.votes - a.votes) || (a.ts - b.ts);
     const byNew = (a, b) => b.ts - a.ts;
@@ -638,8 +651,8 @@ function live(code, mode) {
     if (needle) list = list.filter(q => q.text.toLowerCase().includes(needle) || (q.author || '').toLowerCase().includes(needle) || q.merged.some(m => m.text.toLowerCase().includes(needle)));
 
     const stat = (n, label) => h('div', { class: 'stat' }, h('b', {}, n), h('span', {}, label));
-    const header = h('header', { class: 'topbar' }, h('div', { class: 'topbar-in' },
-      h('div', { class: 'title' }, h('span', { class: `role ${isHost ? 'admin' : ''}` }, isHost ? t('role.host') : t('role.participant')), h('h1', {}, d.title)),
+    const header = h('header', { class: 'topbar' }, isHost && h('div', { class: 'mode-banner' }, '🎛 ' + t('mode.host')), h('div', { class: 'topbar-in' },
+      h('div', { class: 'title' }, h('span', { class: `role ${isHost ? 'admin' : ''}` }, isHost ? t('role.host') : t('role.participant')), h('h1', {}, d.title), d.demo && h('span', { class: 'tag demo' }, t('demo.badge'))),
       h('div', { class: 'meta' }, h('span', { class: 'online', title: t('stats.online') }, '● ' + d.online), h('span', { class: 'code' }, d.code), langBtn())));
 
     const stats = h('div', { class: 'stats' },
