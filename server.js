@@ -32,6 +32,7 @@ const IP_LIMIT = Number(process.env.IP_LIMIT_PER_MIN) || 600;              // al
 const BACKUP_KEEP = Number(process.env.BACKUP_KEEP) || 14;                 // daily backups kept
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';                // enables self-service registration
 const MAX_SPACES_PER_EMAIL = Number(process.env.MAX_SPACES_PER_EMAIL) || 3;  // active (not ended) spaces per organiser
+const REQUIRE_PRO_EMAIL = process.env.REQUIRE_PRO_EMAIL === '1';           // off by default: any verified Google account can register
 const TERMS_VERSION = '2026-11-24';
 // Demos shown on the home page: PUBLIC_DEMOS="Title|https://…/e/CODE;Title|https://…/e/CODE" (or a single PUBLIC_DEMO_URL)
 const PUBLIC_DEMOS = String(process.env.PUBLIC_DEMOS || '').split(';').map(x => x.split('|').map(y => y.trim())).filter(([t, u]) => t && /^https?:\/\//.test(u || '')).map(([title, url]) => ({ title, url }));
@@ -383,14 +384,14 @@ const server = http.createServer(async (req, res) => {
     try {
       const ip = clientIp(req);
       if (req.method === 'POST' && limited('ip:' + ip, IP_LIMIT)) return json(res, 429, { error: 'err.rate' });
-      if (req.method === 'GET' && parts[1] === 'info') return json(res, 200, { lan: lanUrls(), googleClientId: GOOGLE_CLIENT_ID || null, termsVersion: TERMS_VERSION, maxSpaces: MAX_SPACES_PER_EMAIL, demos: PUBLIC_DEMOS, freeDomains: GOOGLE_CLIENT_ID ? FREE_DOMAINS : [] });
+      if (req.method === 'GET' && parts[1] === 'info') return json(res, 200, { lan: lanUrls(), googleClientId: GOOGLE_CLIENT_ID || null, termsVersion: TERMS_VERSION, maxSpaces: MAX_SPACES_PER_EMAIL, demos: PUBLIC_DEMOS, freeDomains: GOOGLE_CLIENT_ID && REQUIRE_PRO_EMAIL ? FREE_DOMAINS : [] });
       // Self-service registration: Google sign-in (verified server-side), professional e-mail, terms accepted
       if (req.method === 'POST' && parts[1] === 'register') {
         if (limited('reg:' + ip, LOGIN_LIMIT)) return json(res, 429, { error: 'err.rate' });
         const b = await body(req);
         let who;
         try { who = await verifyGoogleIdToken(b.credential, GOOGLE_CLIENT_ID); } catch (e) { return json(res, 401, { error: /^err\./.test(e.message) ? e.message : 'err.regToken' }); }
-        if (!isProEmail(who.email)) return json(res, 403, { error: 'err.regProEmail' });
+        if (REQUIRE_PRO_EMAIL && !isProEmail(who.email)) return json(res, 403, { error: 'err.regProEmail' });
         if (b.acceptTerms !== true || b.termsVersion !== TERMS_VERSION) return json(res, 400, { error: 'err.regTerms' });
         const title = clean(b.title, 80);
         if (title.length < 3) return json(res, 400, { error: 'err.title' });

@@ -306,7 +306,7 @@ function registerPage() {
   document.title = t('reg.title') + ' — Meetup Q&A';
   const st = { cred: null, who: null, title: '', moderate: false, accept: false, done: null, busy: false };
   const decode = jwt => { try { return JSON.parse(decodeURIComponent(escape(atob(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))); } catch { return null; } };
-  const isPro = email => { const d = String(email || '').toLowerCase().split('@')[1] || ''; return !!d && !(INFO.freeDomains || []).includes(d); };
+  const isPro = email => { const d = String(email || '').toLowerCase().split('@')[1] || ''; return !!d && !(INFO.freeDomains || []).includes(d); };   // freeDomains is empty unless REQUIRE_PRO_EMAIL=1
   function googleButton(el) {
     const init = () => {
       window.google.accounts.id.initialize({ client_id: INFO.googleClientId, callback: r => { st.cred = r.credential; st.who = decode(r.credential); draw(); }, ux_mode: 'popup' });

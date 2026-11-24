@@ -301,12 +301,13 @@ test('agenda: sessions CRUD, one live at a time, max 20, questions per session, 
   await post(`${Q}/${qa.id}/action`, { key: hostKey, action: 'delete' });
 });
 
-test('self-service registration: Google sign-in verified server-side, pro e-mail only, terms required, 3 spaces max', async () => {
+test('self-service registration: Google sign-in verified server-side, any verified account, terms required, 3 spaces max', async () => {
   const info = (await get('/info')).body;
   assert.equal(info.googleClientId, 'test-client');
   const reg = (credential, extra = {}) => post('/register', { credential, title: 'Team meetup', acceptTerms: true, termsVersion: info.termsVersion, ...extra });
-  assert.equal((await reg(googleToken({ email: 'bob@gmail.com' }))).body.error, 'err.regProEmail', 'Gmail refused');
-  assert.equal((await reg(googleToken({ email: 'bob@free.fr' }))).body.error, 'err.regProEmail', 'Free refused');
+  const gm = await reg(googleToken({ email: 'bob@gmail.com', sub: 'gm' }));
+  assert.equal(gm.status, 200, 'any verified Google account (Gmail included) can register by default');
+  await post(`/events/${gm.body.code}/settings`, { token, delete: true });
   assert.equal((await reg(googleToken({ email: 'alice@acme.io', aud: 'someone-else' }))).status, 401, 'token for another app refused');
   assert.equal((await reg(googleToken({ email: 'alice@acme.io', exp: 1000 }))).status, 401, 'expired token refused');
   assert.equal((await reg(googleToken({ email: 'alice@acme.io', email_verified: false }))).body.error, 'err.regEmailUnverified');
