@@ -9,6 +9,9 @@
 // Meetup Q&A v2 — translations (English / French)
 window.I18N = {
   en: {
+    'find.title': 'Find your space', 'find.sub': 'Search by event name, company or code.', 'find.ph': 'Event, company or code…',
+    'find.count': '{n} space(s)', 'find.none': 'No space matches your search.', 'find.demo': 'Demo',
+    'create.company': 'Company / organisation', 'create.companyPh': 'Company / organisation (optional)', 'create.companyPrompt': 'Company / organisation for "{title}":',
     'login.pwPh': 'Enter the password',
     'login.title': 'Sign in', 'login.showPw': 'Show password', 'login.hidePw': 'Hide password', 'login.or': 'or', 'login.google': 'Organiser? Continue with Google', 'login.googleNote': 'Access the spaces you created, without a password.',
     'land.kicker': 'Live audience engagement', 'land.pvQuestion': 'What are the top 3 tech priorities for Q4?', 'land.pvPoll': 'Which Q4 priority matters most?', 'land.pvOnline': 'online now',
@@ -189,6 +192,9 @@ window.I18N = {
     'err.limit3': 'You can send up to 3 answers', 'err.route': 'Unknown route', 'err.invalid': 'Invalid request',
   },
   fr: {
+    'find.title': 'Trouver votre espace', 'find.sub': 'Recherchez par nom d\'événement, société ou code.', 'find.ph': 'Événement, société ou code…',
+    'find.count': '{n} espace(s)', 'find.none': 'Aucun espace ne correspond à votre recherche.', 'find.demo': 'Démo',
+    'create.company': 'Société / organisation', 'create.companyPh': 'Société / organisation (facultatif)', 'create.companyPrompt': 'Société / organisation pour « {title} » :',
     'login.pwPh': 'Saisissez le mot de passe',
     'login.title': 'Connexion', 'login.showPw': 'Afficher le mot de passe', 'login.hidePw': 'Masquer le mot de passe', 'login.or': 'ou', 'login.google': 'Organisateur ? Continuer avec Google', 'login.googleNote': 'Accédez aux espaces que vous avez créés, sans mot de passe.',
     'land.kicker': 'Engagement du public en direct', 'land.pvQuestion': 'Quelles sont les 3 priorités tech pour le T4 ?', 'land.pvPoll': 'Quelle priorité T4 compte le plus ?', 'land.pvOnline': 'connectés',

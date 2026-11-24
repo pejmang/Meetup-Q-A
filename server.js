@@ -285,7 +285,7 @@ function view(ev, isHost, cid, isScreen) {
       reacts: EMOJIS.map(e => ({ e, n: (q.reacts?.[e] || []).length, mine: (q.reacts?.[e] || []).includes(cid) })),
     }));
   return {
-    code: ev.code, title: ev.title, open: ev.open, moderation: ev.moderation, host: isHost, ended: !!ev.ended, demo: !!ev.demo,
+    code: ev.code, title: ev.title, company: ev.company || '', open: ev.open, moderation: ev.moderation, host: isHost, ended: !!ev.ended, demo: !!ev.demo,
     created: ev.created, online: onlineCount(ev.code), questions, screenPoll: ev.screenPoll || null,
     sessions: sessionsOf(ev), screenSessionOnly: !!ev.screenSessionOnly,
     ...(isPublicDemo(ev) ? { publicDemo: true, demoResetAt: ev.demoResetAt || null, demoResetMin: DEMO_RESET_MIN } : {}),
@@ -399,7 +399,7 @@ const server = http.createServer(async (req, res) => {
         const code = newCode();
         const hostKey = crypto.randomBytes(12).toString('hex');
         const hostPassword = Array.from(crypto.randomBytes(10), x => 'abcdefghjkmnpqrstuvwxyz23456789'[x % 31]).join('');
-        events[code] = { code, title, hostKey, hostPass: hashPw(hostPassword), open: true, moderation: !!b.moderation,
+        events[code] = { code, title, company: clean(b.company, 80), hostKey, hostPass: hashPw(hostPassword), open: true, moderation: !!b.moderation,
           questions: [], polls: [], created: Date.now(), participants: [], peakOnline: 0, activity: {},
           owner: { ...who, acceptedTerms: TERMS_VERSION, acceptedAt: Date.now() } };
         events[code].polls.push(newNps());
@@ -451,7 +451,7 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'GET' && parts.length === 2 && parts[1] === 'events') {
         const admin = okToken(url.searchParams.get('token'));
         const list = Object.values(events).filter(e => admin || !e.ended).sort((a, b) => b.created - a.created).map(e => ({
-          code: e.code, title: e.title, open: e.open, ended: !!e.ended, created: e.created, demo: !!e.demo,
+          code: e.code, title: e.title, company: e.company || '', open: e.open, ended: !!e.ended, created: e.created, demo: !!e.demo,
           questions: e.questions.filter(q => q.status !== 'pending').length,
           online: onlineCount(e.code),
           ...(admin ? { owner: e.owner ? { email: e.owner.email, name: e.owner.name, acceptedAt: e.owner.acceptedAt } : null, publicDemo: isPublicDemo(e), hostKey: e.hostKey, hasHostPassword: !!e.hostPass, pending: e.questions.filter(q => q.status === 'pending').length } : {}),
@@ -481,7 +481,7 @@ const server = http.createServer(async (req, res) => {
         if (hostPassword.length < 4 || hostPassword.length > 64) return json(res, 400, { error: 'err.hostPw' });
         const code = newCode();
         const hostKey = crypto.randomBytes(12).toString('hex');
-        events[code] = { code, title, hostKey, hostPass: hashPw(hostPassword), open: true, moderation: !!b.moderation,
+        events[code] = { code, title, company: clean(b.company, 80), hostKey, hostPass: hashPw(hostPassword), open: true, moderation: !!b.moderation,
           questions: [], polls: [], created: Date.now(), participants: [], peakOnline: 0, activity: {} };
         if (b.nps !== false) events[code].polls.push(newNps());
         save();
@@ -634,6 +634,8 @@ const server = http.createServer(async (req, res) => {
         if (typeof b.moderation === 'boolean') ev.moderation = b.moderation;
         if (typeof b.screenActivity === 'boolean') ev.screenPoll = b.screenActivity ? 'activity' : null;
         if (typeof b.screenSessionOnly === 'boolean') ev.screenSessionOnly = b.screenSessionOnly;
+        if (typeof b.company === 'string') ev.company = clean(b.company, 80);
+        if (typeof b.title === 'string' && clean(b.title, 80).length >= 3) ev.title = clean(b.title, 80);
         if (b.approveAll) ev.questions.forEach(q => { if (q.status === 'pending') q.status = 'live'; });
       }
       // Agenda: create / update / delete / reorder / status (host only)

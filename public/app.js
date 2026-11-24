@@ -156,7 +156,7 @@ function home() {
   document.title = 'Meetup Q&A';
   clearInterval(homeTimer);
   const hostParam = new URLSearchParams(location.search).get('host');
-  const st = { events: [], admin: false, login: !!hostParam, loginMode: 'host', hostCode: (hostParam || '').toUpperCase(), loaded: false, newTitle: '', newPw: genPw(), newMod: false };
+  const st = { events: [], admin: false, login: !!hostParam, loginMode: 'host', hostCode: (hostParam || '').toUpperCase(), loaded: false, newTitle: '', newPw: genPw(), newMod: false, newCompany: '', find: '' };
   const token = () => safe('adminToken') || '';
   const onHome = () => appPath() === '/';
 
@@ -175,6 +175,7 @@ function home() {
     if (st.admin && e.pending) bits.push('⏳ ' + t('home.toModerate', { n: e.pending }));
     if (st.admin && !e.hasHostPassword) bits.push('⚠ ' + t('home.noHostPw'));
     if (st.admin && e.owner) bits.push('👤 ' + e.owner.email);
+    if (e.company) bits.unshift('🏢 ' + e.company);
     if (e.ended) bits.push(t('home.ended')); else if (!e.open) bits.push(t('home.qClosed'));
     return h('div', { class: `card ev ${e.ended ? 'ended' : ''}` },
       h('div', { class: 'ev-main' }, h('b', {}, e.demo && h('span', { class: 'tag demo' }, t('demo.badge')), ' ', e.title), h('div', { class: 'muted' }, bits.join(' · ')), h('span', { class: 'code' }, e.code)),
@@ -183,6 +184,7 @@ function home() {
         !st.admin && h('button', { class: 'btn small', onclick: () => { st.login = true; st.loginMode = 'host'; st.hostCode = e.code; draw(); document.querySelector('[data-keep="pwd"]')?.focus(); } }, '🎛 ' + t('home.host')),
         st.admin && h('button', { class: 'btn small', onclick: () => { safe('key:' + e.code, e.hostKey); go(`/e/${e.code}/host`); } }, '🎛 ' + t('home.manage')),
         st.admin && h('a', { class: 'btn small', href: `${BASE}/api/events/${e.code}/export.csv?key=${encodeURIComponent(e.hostKey)}&sep=${LANG === 'fr' ? ';' : ','}` }, '⬇ CSV'),
+        st.admin && h('button', { class: 'btn small', title: t('create.company'), onclick: async () => { const c = prompt(t('create.companyPrompt', { title: e.title }), e.company || ''); if (c == null) return; await api(`/events/${e.code}/settings`, { key: e.hostKey, company: c }); refresh(); } }, '🏢'),
         st.admin && e.publicDemo && h('button', { class: 'btn small', onclick: async () => { if (confirm(t('demo.resetConfirm'))) { await api(`/events/${e.code}/demo-reset`, {}); toast('↺ ' + t('demo.resetDone')); refresh(); } } }, '↺ ' + t('demo.reset')),
         st.admin && h('button', { class: 'btn small', onclick: async () => {
           const pw = prompt(t('home.newHostPwPrompt', { title: e.title }), genPw());
@@ -195,18 +197,31 @@ function home() {
   }
 
   // Front door for visitors: join with a code, try the demo, open source, get a space
+  // Find your space: search by name, company or code in a scrollable list
+  function findSpace() {
+    const liveEv = st.events.filter(e => !e.ended);
+    const q = st.find.trim().toLowerCase();
+    const list = q ? liveEv.filter(e => [e.title, e.company, e.code].some(x => String(x || '').toLowerCase().includes(q))) : liveEv;
+    const search = h('input', { type: 'search', 'data-keep': 'find', placeholder: t('find.ph'), 'aria-label': t('find.title'), value: st.find,
+      oninput: e => { st.find = e.target.value; const box = document.querySelector('.find-list'); if (box) box.replaceWith(rows()); const n = document.querySelector('.find-count'); if (n) n.textContent = count(); } });
+    const count = () => t('find.count', { n: (st.find.trim() ? liveEv.filter(e => [e.title, e.company, e.code].some(x => String(x || '').toLowerCase().includes(st.find.trim().toLowerCase()))) : liveEv).length });
+    function rows() {
+      const qq = st.find.trim().toLowerCase();
+      const items = qq ? liveEv.filter(e => [e.title, e.company, e.code].some(x => String(x || '').toLowerCase().includes(qq))) : liveEv;
+      return h('div', { class: 'find-list', role: 'list' }, items.length ? items.map(e => h('button', { class: 'find-row', role: 'listitem', onclick: () => go('/e/' + e.code) },
+        h('span', { class: 'find-main' }, h('b', {}, e.title), h('span', { class: 'find-sub' }, e.company ? '🏢 ' + e.company : (e.demo ? '🎭 ' + t('find.demo') : ''))),
+        h('span', { class: 'find-code' }, e.code))) : h('p', { class: 'muted find-empty' }, st.loaded ? t('find.none') : t('common.loading')));
+    }
+    return h('section', { class: 'find' },
+      h('div', { class: 'find-head' }, h('h2', {}, '🔎 ' + t('find.title')), h('span', { class: 'find-count' }, count())),
+      search, rows());
+  }
+
   function landing() {
     const code = h('input', { type: 'text', 'data-keep': 'lcode', placeholder: t('home.codePh'), maxlength: 5, 'aria-label': t('home.codeLabel'), autocapitalize: 'characters', autocomplete: 'off' });
     const demos = INFO.demos || [];
     const requestHref = `mailto:info@orbii.tech?subject=${encodeURIComponent(t('land.mailSubject'))}&body=${encodeURIComponent(t('land.mailBody'))}`;
     const card = (cls, icon, title, text, actions) => h('article', { class: `land-card ${cls}` }, h('div', { class: 'land-ic', 'aria-hidden': 'true' }, icon), h('h3', {}, title), h('p', {}, text), h('div', { class: 'land-act' }, actions));
-    // decorative product preview (pure HTML, no data)
-    const preview = h('div', { class: 'land-preview', 'aria-hidden': 'true' },
-      h('div', { class: 'pv pv-q' }, h('div', { class: 'pv-vote' }, '👍', h('b', {}, '612')), h('div', {}, h('span', { class: 'pv-tag' }, '🎤 ' + t('q.onScreenBadge')), h('p', {}, t('land.pvQuestion')))),
-      h('div', { class: 'pv pv-poll' }, h('b', {}, t('land.pvPoll')),
-        [['Reliability', 46], ['AI tooling', 31], ['Mobile', 23]].map(([l, v]) => h('div', { class: 'pv-bar' }, h('i', { style: `width:${v}%` }), h('span', {}, l), h('em', {}, v + '%')))),
-      h('div', { class: 'pv pv-live' }, h('div', { class: 'pv-live-h' }, h('span', { class: 'live-dot' }, 'LIVE'), h('b', {}, '1,152'), h('small', {}, t('land.pvOnline'))),
-        sv('svg', { viewBox: '0 0 200 50', class: 'pv-spark' }, sv('polyline', { points: '0,46 12,30 24,14 40,10 60,12 80,9 100,11 120,7 140,10 160,12 180,16 200,22', fill: 'none', 'stroke-width': 3 }))));
     return h('section', { class: 'landing' },
       h('div', { class: 'land-hero' },
         h('div', { class: 'land-copy' },
@@ -215,7 +230,7 @@ function home() {
           h('form', { class: 'land-join', onsubmit: e => { e.preventDefault(); if (code.value.trim()) go('/e/' + code.value.trim().toUpperCase()); } },
             code, h('button', { class: 'btn' }, t('land.join') + ' →')),
           h('ul', { class: 'land-feats' }, ['💬 ' + t('land.f1'), '📊 ' + t('land.f2'), '📈 ' + t('land.f3'), '🗓 ' + t('land.f4')].map(x => h('li', {}, x)))),
-        preview),
+        findSpace()),
       h('div', { class: 'land-cards' },
         demos.length > 0 && card('c-demo', '🎭', t('land.demoT'), t('land.demoP'), [
           demos.map(dm => h('div', { class: 'land-demo' }, h('b', {}, dm.title),
@@ -239,6 +254,7 @@ function home() {
     const titleIn = h('input', { type: 'text', 'data-keep': 'ntitle', placeholder: t('create.titlePh'), maxlength: 80, 'aria-label': t('create.titleLabel'), value: st.newTitle, oninput: e => st.newTitle = e.target.value });
     const hostPwIn = h('input', { type: 'text', 'data-keep': 'npw', placeholder: t('create.hostPwPh'), maxlength: 64, 'aria-label': t('create.hostPwLabel'), autocomplete: 'off', value: st.newPw, oninput: e => st.newPw = e.target.value });
     const mod = h('input', { type: 'checkbox', checked: st.newMod, onchange: e => st.newMod = e.target.checked });
+    const companyIn = h('input', { type: 'text', 'data-keep': 'ncomp', placeholder: t('create.companyPh'), maxlength: 80, 'aria-label': t('create.company'), value: st.newCompany, oninput: e => st.newCompany = e.target.value });
 
     const top = h('div', { class: 'between hometop' }, h('span', {}),
       h('div', { class: 'between' },
@@ -295,12 +311,12 @@ function home() {
       e.preventDefault();
       const pw = st.newPw.trim();
       const title = titleIn.value.trim();
-      const r = await api('/events', { title, moderation: mod.checked, hostPassword: pw });
+      const r = await api('/events', { title, company: st.newCompany, moderation: mod.checked, hostPassword: pw });
       safe('key:' + r.code, r.hostKey);
-      st.newTitle = ''; st.newPw = genPw(); st.newMod = false;
+      st.newTitle = ''; st.newPw = genPw(); st.newMod = false; st.newCompany = '';
       refresh();
       createdModal({ code: r.code, hostKey: r.hostKey, hostPassword: pw, title });
-    } }, h('h2', { style: 'margin:0' }, '➕ ' + t('create.title')), titleIn,
+    } }, h('h2', { style: 'margin:0' }, '➕ ' + t('create.title')), titleIn, companyIn,
       h('div', { class: 'muted' }, t('create.hostPwHint')), hostPwIn,
       h('label', { class: 'row' }, mod, t('create.moderate')), h('button', { class: 'btn primary' }, t('create.submit')),
       h('div', { class: 'demo-row' }, h('span', { class: 'muted' }, '🎭 ' + t('demo.create')),
@@ -320,7 +336,7 @@ function home() {
       st.admin && (liveEv.length ? h('div', { class: 'stack' }, liveEv.map(eventCard)) : h('p', { class: 'empty' }, st.loaded ? t('home.noLive') : t('common.loading'))),
       st.admin && h('form', { class: 'card row-form', onsubmit: e => { e.preventDefault(); if (codeIn.value.trim()) go('/e/' + codeIn.value.trim().toUpperCase()); } },
         codeIn, h('button', { class: 'btn' }, t('home.joinCode'))),
-      st.admin && done.length > 0 && h('div', {}, h('h2', {}, t('home.endedList', { n: done.length })), h('div', { class: 'stack' }, done.map(eventCard))), brandFooter()), login);
+      st.admin && done.length > 0 && h('div', {}, h('h2', {}, t('home.endedList', { n: done.length })), h('div', { class: 'stack' }, done.map(eventCard))), brandFooter()), ...(login ? [login] : []));
   }
   const onKey = e => { if (!onHome()) return document.removeEventListener('keydown', onKey); if (e.key === 'Escape' && st.login) { st.login = false; draw(); } };
   document.addEventListener('keydown', onKey);
@@ -420,12 +436,13 @@ function registerPage() {
         if (!st.accept) return toast(t('err.regTerms'));
         st.busy = true; draw();
         try {
-          const r = await api('/register', { credential: st.cred, title: st.title, moderation: st.moderate, acceptTerms: st.accept, termsVersion: INFO.termsVersion });
+          const r = await api('/register', { credential: st.cred, title: st.title, company: st.company || '', moderation: st.moderate, acceptTerms: st.accept, termsVersion: INFO.termsVersion });
           st.done = r; safe('key:' + r.code, r.hostKey);
         } catch (err) { if (/regToken|regEmailUnverified/.test(String(err && err.message))) { st.who = null; st.cred = null; } }   // sign in again
         st.busy = false; draw();
       } },
         h('b', {}, '2. ' + t('reg.step2')), titleIn,
+        h('input', { type: 'text', 'data-keep': 'rc', maxlength: 80, placeholder: t('create.companyPh'), 'aria-label': t('create.company'), value: st.company || '', oninput: e => st.company = e.target.value }),
         h('label', { class: 'row' }, h('input', { type: 'checkbox', checked: st.moderate, onchange: e => st.moderate = e.target.checked }), t('create.moderate')),
         h('label', { class: 'row reg-terms' }, h('input', { type: 'checkbox', checked: st.accept, required: true, onchange: e => st.accept = e.target.checked }),
           h('span', {}, t('reg.accept1'), ' ', h('a', { href: BASE + '/terms', target: '_blank' }, t('reg.termsLink')), ' ', t('reg.accept2'))),

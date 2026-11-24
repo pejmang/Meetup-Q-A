@@ -681,3 +681,34 @@ body.screen .react { background: color-mix(in srgb, #fff 12%, var(--bg)); }
 .small-note { font-size: .78rem; text-align: center; margin: -6px 0 0; }
 @media (max-width: 480px) { .drawer { border-left: 0; border-top: 4px solid var(--accent); padding: 20px 18px; } }
 @media (prefers-reduced-motion: reduce) { .drawer, .drawer-bg { animation: none; } }
+
+/* ===== Find your space ===== */
+.find { margin-top: 18px; padding: 20px; border-radius: 20px; }
+.find-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 10px; }
+.find-head h2 { margin: 0; font-size: 1.15rem; } .find-head p { margin: 2px 0 0; }
+.find input[type=search] { border-radius: 12px; padding: 12px 14px; }
+.find-list { margin-top: 10px; max-height: 320px; overflow-y: auto; display: grid; gap: 6px; padding-right: 4px; scrollbar-width: thin; }
+.find-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px; width: 100%; text-align: left; border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 10px 12px; cursor: pointer; color: var(--ink); font: inherit; transition: border-color .15s, transform .15s; }
+.find-row:hover, .find-row:focus-visible { border-color: var(--brand); transform: translateX(2px); }
+.find-main { display: grid; min-width: 0; } .find-main b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.find-sub { font-size: .8rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.find-code { font: 700 .9rem ui-monospace, monospace; letter-spacing: .12em; padding: 3px 9px; border-radius: 99px; border: 1px solid var(--line); background: var(--card); }
+.find-go { font-size: .82rem; font-weight: 700; color: var(--brand); white-space: nowrap; }
+.find-empty { text-align: center; padding: 16px 0; }
+@media (max-width: 520px) { .find-row { grid-template-columns: 1fr auto; } .find-go { display: none; } }
+@media (prefers-color-scheme: dark) { .find-go { color: var(--accent); } }
+
+/* ===== Find your space: compact glass card on the right of the hero ===== */
+.land-hero .find { position: relative; z-index: 1; margin: 0; padding: 16px; border-radius: 18px; background: rgba(255,255,255,.97); color: #151a2d; box-shadow: 0 22px 44px -18px rgba(0,0,0,.55); border: 0; }
+.land-hero .find-head { margin-bottom: 8px; align-items: center; }
+.land-hero .find-head h2 { font-size: 1rem; color: #0b2a5b; }
+.find-count { font-size: .72rem; font-weight: 700; color: #6a7088; background: #eef1f8; padding: 2px 8px; border-radius: 99px; }
+.land-hero .find input[type=search] { padding: 10px 12px; font-size: .95rem; background: #f3f5f9; color: #151a2d; border: 1px solid #e3e6f0; }
+.land-hero .find-list { max-height: 214px; margin-top: 8px; gap: 4px; }
+.land-hero .find-row { grid-template-columns: 1fr auto; padding: 8px 10px; background: #fff; color: #151a2d; border-color: #e3e6f0; }
+.land-hero .find-row:hover { border-color: #1f5fbf; background: #f7f9fd; }
+.land-hero .find-main b { font-size: .9rem; }
+.land-hero .find-sub { color: #6a7088; font-size: .75rem; }
+.land-hero .find-code { font-size: .78rem; padding: 2px 8px; background: #0b2a5b; color: #fff; border: 0; }
+.land-hero .find-empty { color: #6a7088; font-size: .85rem; padding: 10px 0; }
+@media (max-width: 860px) { .land-hero .find { text-align: left; margin-top: 6px; } }

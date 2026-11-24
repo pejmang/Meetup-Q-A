@@ -77,6 +77,8 @@ test('admin login + event creation with host password', async () => {
   assert.equal(r.status, 200);
   ({ code, hostKey } = r.body);
   const h = await post(`/events/${code}/host-login`, { password: 'host1234' });
+  await post(`/events/${code}/settings`, { token, company: 'ACME Corp' });
+  assert.equal((await get('/events')).body.events.find(e => e.code === code).company, 'ACME Corp', 'company shown in the public list (find your space)');
   assert.equal(h.body.hostKey, hostKey);
 });
 
