@@ -345,10 +345,12 @@ const clean = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
 const lastAsk = new Map(); // anti-flood: 1 question / 4 s per device
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png' };
 let indexHtml = null;
+// '2026', then '2026–2027', '2026–2028'… computed on each request so a long-running server stays correct
+const copyrightYears = () => { const y = new Date().getFullYear(); return y > 2026 ? `2026–${y}` : '2026'; };
 function serveIndex(res) {
   if (!indexHtml) indexHtml = fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8').replace(/__BASE__/g, BASE);
   res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-cache' });
-  res.end(indexHtml);
+  res.end(indexHtml.replace('__COPYRIGHT_YEARS__', copyrightYears()));
 }
 
 // ---------- Router ----------

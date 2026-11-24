@@ -330,4 +330,6 @@ test('base path: index is served with the base injected', async () => {
   const html = await r.text();
   assert.match(html, /<meta name="base-path" content="\/v2.0">/);
   assert.match(html, /src="\/v2.0\/app.js"/);
+  const y = new Date().getFullYear();
+  assert.ok(html.includes(`content="© ${y > 2026 ? `2026–${y}` : '2026'} ORBii SAS"`), 'copyright years follow the current year');
 });

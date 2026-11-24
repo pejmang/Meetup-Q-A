@@ -51,9 +51,12 @@ function h(tag, props = {}, ...kids) {
   for (const kid of kids.flat(Infinity)) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(kid));
   return el;
 }
+// Copyright years: first publication year, extended automatically ('2026', then '2026–2027', '2026–2028'…)
+const COPYRIGHT_SINCE = 2026;
+const copyrightYears = () => { const y = new Date().getFullYear(); return y > COPYRIGHT_SINCE ? `${COPYRIGHT_SINCE}–${y}` : String(COPYRIGHT_SINCE); };
 // Discreet brand signature, as most SaaS tools do ("Powered by …")
 const brandFooter = () => h('footer', { class: 'brand-foot' },
-  h('span', {}, '© 2026 ORBii SAS'), h('span', { 'aria-hidden': 'true' }, ' · '),
+  h('span', {}, `© ${copyrightYears()} ORBii SAS`), h('span', { 'aria-hidden': 'true' }, ' · '),
   h('a', { href: 'https://orbii.tech', target: '_blank', rel: 'noopener' }, 'Powered by ', h('b', {}, 'ORBii'), ', ', h('span', { class: 'nowrap' }, 'Smart Tools for a Connected World')));
 let toastT;
 function toast(msg) {
