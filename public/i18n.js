@@ -9,6 +9,7 @@
 // Meetup Q&A v2 — translations (English / French)
 window.I18N = {
   en: {
+    'land.kicker': 'Live audience engagement', 'land.pvQuestion': 'What are the top 3 tech priorities for Q4?', 'land.pvPoll': 'Which Q4 priority matters most?', 'land.pvOnline': 'online now',
     'my.title': 'My spaces', 'my.sub': 'Organisers: access your spaces with Google — no password needed.',
     'my.signIn': 'Sign in with the Google account you used to create your space', 'my.signInHint': 'You will see your spaces and can open the host view or generate a new host password.',
     'my.none': 'No space is linked to this Google account yet.', 'my.newPw': 'New host password',
@@ -186,6 +187,7 @@ window.I18N = {
     'err.limit3': 'You can send up to 3 answers', 'err.route': 'Unknown route', 'err.invalid': 'Invalid request',
   },
   fr: {
+    'land.kicker': 'Engagement du public en direct', 'land.pvQuestion': 'Quelles sont les 3 priorités tech pour le T4 ?', 'land.pvPoll': 'Quelle priorité T4 compte le plus ?', 'land.pvOnline': 'connectés',
     'my.title': 'Mes espaces', 'my.sub': 'Organisateurs : accédez à vos espaces avec Google — sans mot de passe.',
     'my.signIn': 'Connectez-vous avec le compte Google utilisé pour créer votre espace', 'my.signInHint': 'Vous verrez vos espaces et pourrez ouvrir la vue animateur ou générer un nouveau mot de passe animateur.',
     'my.none': 'Aucun espace n\'est encore lié à ce compte Google.', 'my.newPw': 'Nouveau mot de passe animateur',

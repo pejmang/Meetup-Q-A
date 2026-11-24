@@ -199,22 +199,32 @@ function home() {
     const code = h('input', { type: 'text', 'data-keep': 'lcode', placeholder: t('home.codePh'), maxlength: 5, 'aria-label': t('home.codeLabel'), autocapitalize: 'characters', autocomplete: 'off' });
     const demos = INFO.demos || [];
     const requestHref = `mailto:info@orbii.tech?subject=${encodeURIComponent(t('land.mailSubject'))}&body=${encodeURIComponent(t('land.mailBody'))}`;
-    const card = (icon, title, text, actions) => h('article', { class: 'land-card' }, h('div', { class: 'land-ic', 'aria-hidden': 'true' }, icon), h('h3', {}, title), h('p', {}, text), h('div', { class: 'land-act' }, actions));
+    const card = (cls, icon, title, text, actions) => h('article', { class: `land-card ${cls}` }, h('div', { class: 'land-ic', 'aria-hidden': 'true' }, icon), h('h3', {}, title), h('p', {}, text), h('div', { class: 'land-act' }, actions));
+    // decorative product preview (pure HTML, no data)
+    const preview = h('div', { class: 'land-preview', 'aria-hidden': 'true' },
+      h('div', { class: 'pv pv-q' }, h('div', { class: 'pv-vote' }, '👍', h('b', {}, '612')), h('div', {}, h('span', { class: 'pv-tag' }, '🎤 ' + t('q.onScreenBadge')), h('p', {}, t('land.pvQuestion')))),
+      h('div', { class: 'pv pv-poll' }, h('b', {}, t('land.pvPoll')),
+        [['Reliability', 46], ['AI tooling', 31], ['Mobile', 23]].map(([l, v]) => h('div', { class: 'pv-bar' }, h('i', { style: `width:${v}%` }), h('span', {}, l), h('em', {}, v + '%')))),
+      h('div', { class: 'pv pv-live' }, h('div', { class: 'pv-live-h' }, h('span', { class: 'live-dot' }, 'LIVE'), h('b', {}, '1,152'), h('small', {}, t('land.pvOnline'))),
+        sv('svg', { viewBox: '0 0 200 50', class: 'pv-spark' }, sv('polyline', { points: '0,46 12,30 24,14 40,10 60,12 80,9 100,11 120,7 140,10 160,12 180,16 200,22', fill: 'none', 'stroke-width': 3 }))));
     return h('section', { class: 'landing' },
       h('div', { class: 'land-hero' },
-        h('h1', {}, 'Meetup Q&A'), h('p', { class: 'land-tag' }, t('land.tagline')),
-        h('form', { class: 'land-join', onsubmit: e => { e.preventDefault(); if (code.value.trim()) go('/e/' + code.value.trim().toUpperCase()); } },
-          code, h('button', { class: 'btn primary' }, t('land.join'))),
-        h('ul', { class: 'land-feats' }, ['💬 ' + t('land.f1'), '📊 ' + t('land.f2'), '📈 ' + t('land.f3'), '🗓 ' + t('land.f4')].map(x => h('li', {}, x)))),
+        h('div', { class: 'land-copy' },
+          h('span', { class: 'land-kicker' }, '✨ ' + t('land.kicker')),
+          h('h1', {}, 'Meetup ', h('span', {}, 'Q&A')), h('p', { class: 'land-tag' }, t('land.tagline')),
+          h('form', { class: 'land-join', onsubmit: e => { e.preventDefault(); if (code.value.trim()) go('/e/' + code.value.trim().toUpperCase()); } },
+            code, h('button', { class: 'btn' }, t('land.join') + ' →')),
+          h('ul', { class: 'land-feats' }, ['💬 ' + t('land.f1'), '📊 ' + t('land.f2'), '📈 ' + t('land.f3'), '🗓 ' + t('land.f4')].map(x => h('li', {}, x)))),
+        preview),
       h('div', { class: 'land-cards' },
-        demos.length > 0 && card('🎭', t('land.demoT'), t('land.demoP'), [
+        demos.length > 0 && card('c-demo', '🎭', t('land.demoT'), t('land.demoP'), [
           demos.map(dm => h('div', { class: 'land-demo' }, h('b', {}, dm.title),
             h('div', { class: 'land-act' }, h('a', { class: 'btn primary small', href: dm.url + '/host' }, '🎛 ' + t('land.demoHost')), h('a', { class: 'btn small', href: dm.url }, '👥 ' + t('land.demoGuest'))))),
           h('div', { class: 'muted land-pw' }, t('land.demoPw'), ' ', h('code', {}, 'demo20272028'))]),
-        card('⭐', t('land.ossT'), t('land.ossP'), [
+        card('c-oss', '⭐', t('land.ossT'), t('land.ossP'), [
           h('a', { class: 'btn small', href: 'https://github.com/pejmang/Meetup-Q-A', target: '_blank', rel: 'noopener' }, t('land.ossBtn')),
           h('div', { class: 'muted' }, 'PolyForm Noncommercial 1.0.0')]),
-        card('✨', t('land.spaceT'), t('land.spaceP'), [
+        card('c-space', '✨', t('land.spaceT'), t('land.spaceP'), [
           INFO.googleClientId ? [h('button', { class: 'btn primary small', onclick: () => go('/register') }, t('reg.cta')), link('/my', '🗂 ' + t('my.title'), { class: 'btn small' })]
             : h('a', { class: 'btn primary small', href: requestHref }, t('land.request')),
           h('div', { class: 'muted' }, t('land.spaceNote'))])));
@@ -291,12 +301,12 @@ function home() {
         } }, scenario === 'townhall' ? '🏢 Townhall · 1,200' : (l === 'en' ? '🇬🇧 English' : '🇫🇷 Français') + (days > 1 ? ' · ' + t('demo.days', { n: days }) : '')))));
 
     document.body.classList.toggle('admin-mode', st.admin);
-    $app.replaceChildren(...[st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin'))].filter(Boolean), h('div', { class: 'wrap narrow' }, top,
+    $app.replaceChildren(...[st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin'))].filter(Boolean), h('div', { class: `wrap ${st.admin ? 'narrow' : 'home-wide'}` }, top,
       login && h('div', { class: 'login-top' }, login),   // a host link / sign-in request shows the form first
       st.admin ? h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline'))) : landing(),
       pwCard, create,
-      h('h2', {}, t('home.live', { n: liveEv.length })),
-      liveEv.length ? h('div', { class: 'stack' }, liveEv.map(eventCard)) : h('p', { class: 'empty' }, st.loaded ? t('home.noLive') : t('common.loading')),
+      st.admin && h('h2', {}, t('home.live', { n: liveEv.length })),
+      st.admin && (liveEv.length ? h('div', { class: 'stack' }, liveEv.map(eventCard)) : h('p', { class: 'empty' }, st.loaded ? t('home.noLive') : t('common.loading'))),
       st.admin && h('form', { class: 'card row-form', onsubmit: e => { e.preventDefault(); if (codeIn.value.trim()) go('/e/' + codeIn.value.trim().toUpperCase()); } },
         codeIn, h('button', { class: 'btn' }, t('home.joinCode'))),
       st.admin && done.length > 0 && h('div', {}, h('h2', {}, t('home.endedList', { n: done.length })), h('div', { class: 'stack' }, done.map(eventCard))), brandFooter()));
