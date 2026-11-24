@@ -142,7 +142,7 @@ function home() {
     const hostPwIn = h('input', { type: 'text', 'data-keep': 'npw', placeholder: t('create.hostPwPh'), maxlength: 64, 'aria-label': t('create.hostPwLabel'), autocomplete: 'off', value: st.newPw, oninput: e => st.newPw = e.target.value });
     const mod = h('input', { type: 'checkbox', checked: st.newMod, onchange: e => st.newMod = e.target.checked });
 
-    const top = h('div', { class: 'between hometop' }, h('span', { class: 'tag beta' }, 'v2.0 beta'),
+    const top = h('div', { class: 'between hometop' }, BASE ? h('span', { class: 'tag beta' }, 'staging ' + BASE.slice(1)) : h('span', {}),
       h('div', { class: 'between' },
         st.admin
           ? [h('span', { class: 'role admin' }, t('home.adminSignedIn')), h('button', { class: 'btn small', onclick: () => { safe('adminToken', ''); st.admin = false; refresh(); } }, t('home.signOut'))]
