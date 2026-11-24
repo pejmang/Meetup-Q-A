@@ -1,7 +1,7 @@
 /*!
  * Meetup Q&A (ORBii Interact)
  * Copyright (c) 2026 ORBii SAS. All rights reserved.
- * Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE): free for any noncommercial use.
+ * Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE and NOTICE): free for any noncommercial use.
  * Commercial use requires a separate license from ORBii SAS: info@orbii.tech
  * https://polyformproject.org/licenses/noncommercial/1.0.0
  */

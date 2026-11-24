@@ -1,5 +1,7 @@
 # Meetup Q&A
 
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-7b5cd6)](https://polyformproject.org/licenses/noncommercial/1.0.0) [![CI](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml/badge.svg)](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml)
+
 Live Q&A and polls for meetups and events. Zero dependencies (Node ≥ 18), real-time via Server-Sent Events, data stored in a single JSON file.
 
 ## Roles
@@ -88,9 +90,11 @@ Put a reverse proxy in front (see `nginx.conf.example`). Important: `proxy_buffe
 
 Copyright © 2026 **ORBii SAS**. All rights reserved.
 
-This software is released under the **[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)** (see [`LICENSE`](LICENSE)):
+This software is released under the **[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)** (see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE)):
 
 - ✅ **Free for any noncommercial use**: personal use, research, education, nonprofits, public institutions, community meetups. You may use, modify and share it, keeping the copyright notice.
 - 💼 **Commercial use** (selling it, including it in a paid offer, using it to generate revenue) **requires a separate license from ORBii SAS**: **info@orbii.tech**
+
+GitHub shows the license as "Other" because PolyForm is not in its built-in license list; the terms are the official PolyForm Noncommercial 1.0.0 text.
 
 Note: this is a *source-available* license. It does not meet the OSI "open source" definition, because that definition does not allow restricting commercial use.
