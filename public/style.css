@@ -519,3 +519,13 @@ body.screen .react { background: color-mix(in srgb, #fff 12%, var(--bg)); }
 @media (prefers-reduced-motion: reduce) { .q.hl, .stage-card { animation: none; transition: none; } }
 @media print { .q.hl { transform: none; animation: none; box-shadow: none; } }
 .now-banner .nb-t { flex: 1 1 180px; }
+
+/* ===== On screen: the card comes to the foreground in place, the others stay visible underneath ===== */
+.q.hl { margin: 6px 0 !important; transform: perspective(900px) translateZ(0) translateY(-6px) scale(1.045); z-index: 4; }
+@keyframes hl-pop { from { transform: perspective(900px) translateY(0) scale(1); } 60% { transform: perspective(900px) translateY(-9px) scale(1.06); } to { transform: perspective(900px) translateY(-6px) scale(1.045); } }
+.main.has-hl > .q:not(.hl) { opacity: .62; filter: saturate(.75); transform: scale(.985); transition: opacity .35s, transform .35s, filter .35s; }
+.main.has-hl > .q:not(.hl):hover { opacity: 1; filter: none; }
+.q.hl-out { animation: hl-back .6s cubic-bezier(.3,.7,.2,1); position: relative; z-index: 3; }
+@keyframes hl-back { from { transform: perspective(900px) translateY(-6px) scale(1.045); box-shadow: 0 14px 28px -6px rgba(11,42,91,.28), 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+  to { transform: none; box-shadow: var(--shadow); } }
+@media (prefers-reduced-motion: reduce) { .q.hl-out, .main.has-hl > .q:not(.hl) { animation: none; transition: none; transform: none; } }
