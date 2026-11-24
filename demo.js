@@ -26,6 +26,7 @@ const CONTENT = {
       ['How long until the first results?', null, null],
     ],
     duplicate: ['How much does an AI project cost for a small company?', 'Aisha', 1],
+    sessions: [['Welcome & keynote: AI in 2027', 'Sarah Martin', 20, 'Where generative AI really creates value, and where it does not.'], ['AI agents in production', 'Karim Benali', 25, 'Lessons learned from three real deployments.'], ['Panel: data sovereignty & GDPR', 'Priya Shah, Tom Leroy', 30, 'Hosting, contracts and compliance for European companies.']],
     polls: {
       choice: ['Which industry are you in?', ['Industry', 'Services', 'Public sector', 'Retail']],
       multi: ['Which AI tools do you use at work?', ['ChatGPT', 'Claude', 'Copilot', 'Mistral', 'None yet']],
@@ -51,6 +52,7 @@ const CONTENT = {
       ['Combien de temps avant les premiers résultats ?', null, null],
     ],
     duplicate: ['Combien coûte un projet IA pour une petite entreprise ?', 'Aïcha', 1],
+    sessions: [['Accueil & keynote : l\'IA en 2027', 'Sarah Martin', 20, 'Où l\'IA générative crée vraiment de la valeur, et où elle n\'en crée pas.'], ['Les agents IA en production', 'Karim Benali', 25, 'Retours d\'expérience de trois déploiements réels.'], ['Table ronde : souveraineté des données & RGPD', 'Priya Shah, Tom Leroy', 30, 'Hébergement, contrats et conformité pour les entreprises européennes.']],
     polls: {
       choice: ['Votre secteur ?', ['Industrie', 'Services', 'Secteur public', 'Commerce']],
       multi: ['Quels outils IA utilisez-vous ?', ['ChatGPT', 'Claude', 'Copilot', 'Mistral', 'Aucun']],
@@ -87,6 +89,16 @@ function buildDemo({ lang, code, hostKey, hostPass, uid, days = 1 }) {
   const target = questions[into];
   target.merged.push({ text: dt, author: da });
   target.voters = [...new Set([...target.voters, ...sample(5)])];
+
+  // Agenda: 3 sessions (keynote done, agents live, panel upcoming); questions spread across them
+  const t0 = new Date(start), hh = d => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  let off = 10;
+  const sessions = C.sessions.map(([title, speaker, duration, description], i) => {
+    const sstart = new Date(t0.getTime() + off * MIN); off += duration + 10;
+    return { id: uid(), title, speaker, startTime: hh(sstart), duration, description, order: i, status: i === 0 ? 'done' : i === 1 ? 'live' : 'upcoming' };
+  });
+  const sessionOf = [0, null, null, 1, 1, null, 2, 2, null];
+  questions.forEach((q, i) => { q.sessionId = sessionOf[i] == null ? null : sessions[sessionOf[i]].id; });
 
   // Polls: closed history, one live poll, one prepared (draft), and the event NPS
   const P = C.polls, polls = [];
@@ -141,7 +153,7 @@ function buildDemo({ lang, code, hostKey, hostPass, uid, days = 1 }) {
 
   if (days > 1) C.title = C.title.replace(/\(/, `(${days} ${lang === 'fr' ? 'jours' : 'days'}, `);
   return { code, title: C.title, hostKey, hostPass, open: true, moderation: false, demo: true, lang,
-    questions, polls, created: days > 1 ? Math.min(...Object.keys(tl).map(Number)) : start, participants: people.slice(0, Math.max(peak + 8, 0)), actives: [...actives].filter(x => people.includes(x)),
+    sessions, questions, polls, created: days > 1 ? Math.min(...Object.keys(tl).map(Number)) : start, participants: people.slice(0, Math.max(peak + 8, 0)), actives: [...actives].filter(x => people.includes(x)),
     peakOnline: peak, peakOnlineAt: peakAt, tl };
 }
 

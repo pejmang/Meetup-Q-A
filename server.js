@@ -163,6 +163,21 @@ function aggregate(tl, keys, from, to, r) {
   return out;
 }
 
+// ---------- Agenda (sessions) ----------
+// Events created before this feature have no 'sessions' field: treated as an empty agenda, no migration.
+const MAX_SESSIONS = 20;
+const SESSION_STATUS = ['upcoming', 'live', 'done'];
+const sessionsOf = ev => (ev.sessions || []).slice().sort((a, b) => a.order - b.order);
+function sessionFields(b) {
+  const title = clean(b.title, 100);
+  if (title.length < 3) return { error: 'err.sessionTitle' };
+  const startTime = clean(b.startTime, 5);
+  if (startTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime)) return { error: 'err.sessionTime' };
+  const duration = b.duration === '' || b.duration == null ? null : Number(b.duration);
+  if (duration != null && (!Number.isInteger(duration) || duration < 1 || duration > 1440)) return { error: 'err.sessionDuration' };
+  return { title, speaker: clean(b.speaker, 100), startTime: startTime || null, duration, description: String(b.description || '').replace(/\s+/g, ' ').trim().slice(0, 300) };
+}
+
 // ---------- Views by role ----------
 const EMOJIS = ['❤️', '🔥', '💡', '👏'];
 const POLL_TYPES = ['choice', 'multi', 'wordcloud', 'rating', 'nps', 'open'];
@@ -250,7 +265,7 @@ function view(ev, isHost, cid, isScreen) {
     .filter(q => isHost || q.status !== 'pending' || q.cid === cid || (q.merged || []).some(m => m.cid === cid))
     .map(q => ({
       id: q.id, text: q.text, author: q.anon ? null : q.author, status: q.status,
-      pinned: q.pinned, highlighted: q.highlighted, ts: q.ts, note: q.note || '',
+      pinned: q.pinned, highlighted: q.highlighted, ts: q.ts, note: q.note || '', sessionId: q.sessionId || null,
       merged: (q.merged || []).map(m => ({ text: m.text, author: m.author, mine: !!cid && m.cid === cid })),
       mergedMine: !!cid && (q.merged || []).some(m => m.cid === cid),
       votes: q.voters.length, voted: q.voters.includes(cid), mine: q.cid === cid,
@@ -259,6 +274,7 @@ function view(ev, isHost, cid, isScreen) {
   return {
     code: ev.code, title: ev.title, open: ev.open, moderation: ev.moderation, host: isHost, ended: !!ev.ended, demo: !!ev.demo,
     created: ev.created, online: onlineCount(ev.code), questions, screenPoll: ev.screenPoll || null,
+    sessions: sessionsOf(ev), screenSessionOnly: !!ev.screenSessionOnly,
     polls: ev.polls.filter(p => isHost || !p.draft).map(p => pollView(p, isHost, cid, ev, isScreen)),
     ...(isHost || ev.screenPoll === 'activity' || ratedNps(ev, cid) ? { stats: statsView(ev) } : {}),
   };
@@ -266,7 +282,15 @@ function view(ev, isHost, cid, isScreen) {
 
 // ---------- Real-time ----------
 const clients = new Map(); // res -> { code, host, cid }
+// Updates are coalesced: at most one push per event every BROADCAST_MS, whatever the number of votes,
+// connections or disconnections in between (a whole room joining at once no longer costs N² pushes).
+const BROADCAST_MS = Number(process.env.BROADCAST_MS) || 250;
+const pendingPush = new Map();
 function broadcast(code) {
+  if (pendingPush.has(code)) return;
+  pendingPush.set(code, setTimeout(() => { pendingPush.delete(code); pushNow(code); }, BROADCAST_MS));
+}
+function pushNow(code) {
   const ev = events[code];
   if (!ev) return;
   if (sampleOnline(ev)) save();
@@ -287,9 +311,10 @@ function csv(ev, sep) {
   const out = [row(['Event', ev.title]), row(['Code', ev.code]), row(['Created (UTC)', iso(ev.created)]), ''];
   const st = statsView(ev);
   out.push(row(['Participants (connected)', st.participants]), row(['Active participants', st.activeUsers]), row(['Interactions', st.interactions]), row(['Peak online', st.peakOnline]), row(['Peak online at (UTC)', iso(st.peakOnlineAt)]), row(['Questions', st.questions]), row(['Votes', st.votes]), row(['Poll responses', st.pollResponses]), '');
-  out.push(row(['Rank', 'Question', 'Author', 'Votes', 'Status', 'Pinned', 'Host note', 'Merged questions', ...EMOJIS, 'Asked at (UTC)']));
+  const sTitle = id => (ev.sessions || []).find(x => x.id === id)?.title || 'Whole meetup';
+  out.push(row(['Rank', 'Question', 'Session', 'Author', 'Votes', 'Status', 'Pinned', 'Host note', 'Merged questions', ...EMOJIS, 'Asked at (UTC)']));
   const qs = ev.questions.filter(q => q.status !== 'pending').sort((a, b) => b.voters.length - a.voters.length || a.ts - b.ts);
-  qs.forEach((q, i) => out.push(row([i + 1, q.text, q.anon ? 'Anonymous' : q.author, q.voters.length, q.status, q.pinned ? 'yes' : '', q.note || '',
+  qs.forEach((q, i) => out.push(row([i + 1, q.text, sTitle(q.sessionId), q.anon ? 'Anonymous' : q.author, q.voters.length, q.status, q.pinned ? 'yes' : '', q.note || '',
     (q.merged || []).map(m => m.text).join(' | '), ...EMOJIS.map(e => (q.reacts?.[e] || []).length), iso(q.ts)])));
   out.push('', row(['Poll', 'Type', 'Answer', 'Count']));
   for (let p of ev.polls) {
@@ -466,11 +491,13 @@ const server = http.createServer(async (req, res) => {
         const text = clean(b.text, 280);
         if (text.length < 3 || !bcid) return json(res, 400, { error: 'err.short' });
         if (Date.now() - (lastAsk.get(bcid) || 0) < 4000) return json(res, 429, { error: 'err.slow' });
+        const sessionId = b.sessionId ? String(b.sessionId) : null;      // null = the whole meetup
+        if (sessionId && !(ev.sessions || []).some(x => x.id === sessionId)) return json(res, 400, { error: 'err.session' });
         lastAsk.set(bcid, Date.now());
         ev.questions.push({
           id: uid(), text, author: clean(b.author, 40) || 'Anonymous', anon: !!b.anon || !clean(b.author, 40),
           cid: bcid, ts: Date.now(), voters: [bcid], status: ev.moderation ? 'pending' : 'live',
-          pinned: false, highlighted: false, note: '', merged: [],
+          pinned: false, highlighted: false, note: '', merged: [], sessionId,
         });
         track(ev, bcid);
       }
@@ -502,6 +529,11 @@ const server = http.createServer(async (req, res) => {
           case 'highlight': { const v = !q.highlighted; ev.questions.forEach(x => x.highlighted = false); q.highlighted = v; break; }
           case 'delete': ev.questions = ev.questions.filter(x => x !== q); break;
           case 'note': q.note = String(b.note || '').trim().slice(0, 1000); break;
+          case 'move': {
+            const sid = b.sessionId ? String(b.sessionId) : null;
+            if (sid && !(ev.sessions || []).some(x => x.id === sid)) return json(res, 400, { error: 'err.session' });
+            q.sessionId = sid; break;
+          }
           case 'merge': {
             // Merge q (duplicate) into target: votes and reactions are combined, without double-counting a device.
             const t = ev.questions.find(x => x.id === b.into);
@@ -532,7 +564,40 @@ const server = http.createServer(async (req, res) => {
         if (typeof b.open === 'boolean') { ev.open = b.open; if (b.open) { ev.ended = false; ev.endedAt = null; } }
         if (typeof b.moderation === 'boolean') ev.moderation = b.moderation;
         if (typeof b.screenActivity === 'boolean') ev.screenPoll = b.screenActivity ? 'activity' : null;
+        if (typeof b.screenSessionOnly === 'boolean') ev.screenSessionOnly = b.screenSessionOnly;
         if (b.approveAll) ev.questions.forEach(q => { if (q.status === 'pending') q.status = 'live'; });
+      }
+      // Agenda: create / update / delete / reorder / status (host only)
+      else if (parts[3] === 'sessions') {
+        if (!hostOk) return json(res, 403, { error: 'err.hostOnly' });
+        ev.sessions = ev.sessions || [];
+        const list = ev.sessions;
+        const reindex = () => sessionsOf(ev).forEach((x, i) => { x.order = i; });
+        const find = () => list.find(x => x.id === b.id);
+        if (b.action === 'create') {
+          if (list.length >= MAX_SESSIONS) return json(res, 400, { error: 'err.sessionMax' });
+          const f = sessionFields(b); if (f.error) return json(res, 400, { error: f.error });
+          list.push({ id: uid(), ...f, order: list.length, status: 'upcoming' });
+        } else {
+          const x = find(); if (!x) return json(res, 404, { error: 'err.session' });
+          if (b.action === 'update') { const f = sessionFields(b); if (f.error) return json(res, 400, { error: f.error }); Object.assign(x, f); }
+          else if (b.action === 'delete') {
+            ev.sessions = list.filter(y => y !== x);
+            ev.questions.forEach(q => { if (q.sessionId === x.id) q.sessionId = null; });   // questions are kept, back to "whole meetup"
+            reindex();
+          }
+          else if (b.action === 'move') {
+            const sorted = sessionsOf(ev), i = sorted.indexOf(x), j = i + (b.dir < 0 ? -1 : 1);
+            if (j < 0 || j >= sorted.length) return json(res, 400, { error: 'err.action' });
+            [sorted[i].order, sorted[j].order] = [sorted[j].order, sorted[i].order];
+          }
+          else if (b.action === 'status') {
+            if (!SESSION_STATUS.includes(b.status)) return json(res, 400, { error: 'err.action' });
+            if (b.status === 'live') list.forEach(y => { if (y.status === 'live' && y !== x) y.status = 'done'; });   // one live session at a time
+            x.status = b.status;
+          }
+          else return json(res, 400, { error: 'err.action' });
+        }
       }
       // Polls: create
       else if (parts[3] === 'polls' && parts.length === 4) {
