@@ -54,7 +54,7 @@ function h(tag, props = {}, ...kids) {
 // Discreet brand signature, as most SaaS tools do ("Powered by …")
 const brandFooter = () => h('footer', { class: 'brand-foot' },
   h('span', {}, '© 2026 ORBii SAS'), h('span', { 'aria-hidden': 'true' }, ' · '),
-  h('a', { href: 'https://orbii.tech', target: '_blank', rel: 'noopener' }, t('brand.powered'), ' ', h('b', {}, 'ORBii.tech')));
+  h('a', { href: 'https://orbii.tech', target: '_blank', rel: 'noopener' }, 'Powered by ', h('b', {}, 'ORBii'), ', ', h('span', { class: 'nowrap' }, 'Smart Tools for a Connected World')));
 let toastT;
 function toast(msg) {
   const el = document.getElementById('toast'); el.textContent = msg; el.classList.add('show');
@@ -949,7 +949,7 @@ function live(code, mode) {
         mainBlock),
       h('aside', {}, h('div', { class: 'join-box' }, h('div', { class: 'muted' }, t('screen.joinAt')), h('div', { style: 'font-weight:600;margin:6px 0;overflow-wrap:anywhere' }, joinUrl.replace(/^https?:\/\//, '')),
         qrEl(joinUrl), h('div', { class: 'muted' }, t('screen.code')), h('div', { class: 'c' }, d.code), h('div', { class: 'muted', style: 'margin-top:8px' }, '● ' + t('screen.online', { n: d.online })),
-        h('div', { class: 'screen-brand' }, t('brand.powered'), ' ', h('b', {}, 'ORBii.tech')))));
+        h('div', { class: 'screen-brand' }, 'Powered by ', h('b', {}, 'ORBii'), h('br'), h('span', {}, 'Smart Tools for a Connected World')))));
   }
 }
 
