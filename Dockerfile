@@ -9,6 +9,8 @@ WORKDIR /app
 COPY package.json server.js ./
 COPY public ./public
 ENV NODE_ENV=production PORT=3000 DATA_DIR=/data
+# /data must be writable by the unprivileged user, otherwise nothing is persisted
+RUN mkdir -p /data && chown node:node /data
 VOLUME /data
 EXPOSE 3000
 USER node
