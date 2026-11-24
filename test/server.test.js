@@ -142,7 +142,11 @@ test('event-long NPS: created by default, stays open when other polls launch, on
   assert.equal((await post(`/events/${code}/polls/${nps.id}/vote`, { cid: 'n1', value: 4 })).status, 200, 'vote can be changed');
   const guest = (await get(`/events/${code}?cid=n1`)).body.polls.find(p => p.persistent);
   assert.equal(guest.mine, 4);
-  assert.equal(guest.dist, undefined, 'results hidden from participants while open');
+  assert.notEqual(guest.dist, undefined, 'a participant who rated sees the NPS results');
+  const fresh = (await get(`/events/${code}?cid=never-rated`)).body;
+  assert.equal(fresh.polls.find(p => p.persistent).dist, undefined, 'hidden for participants who have not rated');
+  assert.equal(fresh.stats, undefined, 'no analytics before rating');
+  assert.ok((await get(`/events/${code}?cid=n1`)).body.stats, 'analytics unlocked after rating');
   await post(`/events/${code}/polls/${nps.id}/action`, { key: hostKey, action: 'screen' });
   v = (await get(`/events/${code}?key=${hostKey}`)).body;
   assert.equal(v.screenPoll, nps.id);

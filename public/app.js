@@ -475,7 +475,7 @@ function live(code, mode) {
     const head = h('div', { class: 'poll-h' },
       p.open ? h('span', { class: 'live-dot' }, p.persistent ? t('poll.allEvent') : t('poll.live')) : h('span', { class: 'tag' }, t('poll.closed')),
       h('span', { class: 'tag' }, TYPE_ICON[p.type] + ' ' + t('ptype.' + p.type)),
-      p.hidden && h('span', { class: 'tag' }, '🙈 ' + t('poll.hidden')),
+      p.hidden && (isHost || !p.show) && h('span', { class: 'tag' }, '🙈 ' + t('poll.hidden')),
       isHost && p.onScreen && h('span', { class: 'tag warn' }, '📺 ' + t('poll.onScreen')),
       h('b', { class: 'poll-q' }, pollQ(p)));
     const participantInput = !isHost && pollInput(p, post, ui);
@@ -485,13 +485,23 @@ function live(code, mode) {
       done && p.open ? h('span', { class: 'ok-txt' }, '✓ ' + (['wordcloud', 'open'].includes(p.type) ? t('poll.sent') : t('poll.recorded'))) : h('span', {}),
       h('span', { class: 'muted' }, t('poll.responses', { n: p.total })));
     return h('div', { class: `card poll ${p.open ? 'is-open' : ''} ${p.persistent ? 'is-nps' : ''} ${opts.compact ? 'compact' : ''}` }, head,
-      p.persistent && !isHost && p.open && h('p', { class: 'muted poll-sub' }, t('nps.sub')),
+      p.persistent && !isHost && p.open && h('p', { class: 'muted poll-sub' }, done ? '🎉 ' + t('nps.thanks') : t('nps.sub')),
       participantInput, results, footer,
       isHost && h('div', { class: 'row-actions' },
         h('button', { class: 'btn small', onclick: () => post(`/polls/${p.id}/action`, { action: 'toggle' }) }, p.open ? '⏹ ' + t('poll.close') : '▶ ' + t('poll.reopen')),
         h('button', { class: 'btn small', onclick: () => post(`/polls/${p.id}/action`, { action: 'screen' }) }, p.onScreen ? t('poll.offScreen') : '📺 ' + t('poll.toScreen')),
         p.hidden && p.open && h('button', { class: 'btn small', onclick: () => post(`/polls/${p.id}/action`, { action: 'reveal' }) }, '👁 ' + t('poll.reveal')),
         h('button', { class: 'btn small danger', 'aria-label': t('common.delete'), onclick: () => confirm(t('poll.deleteConfirm')) && post(`/polls/${p.id}/action`, { action: 'delete' }) }, '🗑')));
+  }
+
+  // ----- Participant: analytics unlocked after rating the event NPS -----
+  function guestAnalytics(d) {
+    if (isHost || !d.stats) return null;
+    return h('section', { class: 'card analytics-box guest-an' },
+      h('div', { class: 'between' }, h('b', {}, '📈 ' + t('an.title')), h('span', { class: 'live-dot' }, t('poll.live'))),
+      h('p', { class: 'muted', style: 'margin:0' }, t('an.guestSub')),
+      activityKpis(d.stats),
+      activityChart(d.stats, { w: 360 }));
   }
 
   // ----- Participant: polls panel -----
@@ -502,6 +512,7 @@ function live(code, mode) {
     return h('div', { class: 'stack' },
       liveP.length ? liveP.map(p => pollCard(p)) : h('div', { class: 'card empty-poll' }, h('div', { class: 'big-emoji' }, '📊'), h('b', {}, t('poll.noneLive')), h('p', { class: 'muted' }, t('poll.noneLiveSub'))),
       nps && pollCard(nps),
+      guestAnalytics(d),
       past.length > 0 && h('h2', {}, t('guest.pastPolls', { n: past.length })),
       past.map(p => pollCard(p)));
   }
@@ -684,7 +695,8 @@ function live(code, mode) {
         d.open
           ? h('div', { class: 'card ask-side' }, h('h2', { style: 'margin-top:0' }, '✍️ ' + t('ask.title')), askForm(d, 'a'))
           : h('div', { class: 'banner' }, '🔒 ' + (d.ended ? t('guest.ended') : t('guest.closed'))),
-        state.view === 'questions' && d.polls.filter(p => p.open).map(p => h('div', { class: 'side-poll' }, pollCard(p))));
+        state.view === 'questions' && d.polls.filter(p => p.open).map(p => h('div', { class: 'side-poll' }, pollCard(p))),
+        state.view === 'questions' && d.stats && h('div', { class: 'side-poll' }, guestAnalytics(d)));
     }
     const openPolls = d.polls.filter(p => p.open);
     const todo = openPolls.filter(p => !hasAnswered(p));

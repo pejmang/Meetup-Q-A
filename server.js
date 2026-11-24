@@ -136,7 +136,8 @@ const POLL_TYPES = ['choice', 'multi', 'wordcloud', 'rating', 'nps', 'open'];
 const newNps = () => ({ id: uid(), type: 'nps', question: '', open: true, hidden: true, persistent: true, responses: {}, created: Date.now() });
 
 function pollView(p, isHost, cid, ev) {
-  const show = isHost || !p.hidden || !p.open;                  // hidden results are revealed when the poll closes
+  // Hidden results are revealed when the poll closes — and for the event NPS, to each participant once they have rated it
+  const show = isHost || !p.hidden || !p.open || (p.persistent && !!cid && (p.responses || {})[cid] != null);
   const v = { id: p.id, type: p.type, question: p.question, open: p.open, hidden: !!p.hidden, show, total: 0, draft: !!p.draft,
     persistent: !!p.persistent, onScreen: !!ev && ev.screenPoll === p.id };
   if (p.type === 'choice' || p.type === 'multi') {
@@ -204,6 +205,9 @@ function statsView(ev) {
   };
 }
 
+// Participants who rated the event NPS are rewarded with the live results and analytics
+const ratedNps = (ev, cid) => !!cid && ev.polls.some(p => p.persistent && (p.responses || {})[cid] != null);
+
 function view(ev, isHost, cid) {
   const questions = ev.questions
     .filter(q => isHost || q.status !== 'pending' || q.cid === cid || (q.merged || []).some(m => m.cid === cid))
@@ -219,7 +223,7 @@ function view(ev, isHost, cid) {
     code: ev.code, title: ev.title, open: ev.open, moderation: ev.moderation, host: isHost, ended: !!ev.ended, demo: !!ev.demo,
     created: ev.created, online: onlineCount(ev.code), questions, screenPoll: ev.screenPoll || null,
     polls: ev.polls.filter(p => isHost || !p.draft).map(p => pollView(p, isHost, cid, ev)),
-    ...(isHost || ev.screenPoll === 'activity' ? { stats: statsView(ev) } : {}),
+    ...(isHost || ev.screenPoll === 'activity' || ratedNps(ev, cid) ? { stats: statsView(ev) } : {}),
   };
 }
 
