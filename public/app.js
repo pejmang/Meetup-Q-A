@@ -188,7 +188,7 @@ function home() {
         } }, l === 'en' ? '🇬🇧 English' : '🇫🇷 Français'))));
 
     document.body.classList.toggle('admin-mode', st.admin);
-    $app.replaceChildren(st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin')), h('div', { class: 'wrap narrow' }, top,
+    $app.replaceChildren(...[st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin'))].filter(Boolean), h('div', { class: 'wrap narrow' }, top,
       h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline'))),
       login, create,
       h('h2', {}, t('home.live', { n: liveEv.length })),
