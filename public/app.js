@@ -566,24 +566,46 @@ function live(code, mode) {
   }
 
   // ----- Host: stats + exports -----
-  function statsCard(d) {
-    const s = d.stats; if (!s) return null;
-    const row = (label, val) => h('div', { class: 'kv' }, h('span', { class: 'muted' }, label), h('b', {}, val));
+  const csvHref = () => `${BASE}/api/events/${code}/export.csv?key=${encodeURIComponent(key)}&sep=${LANG === 'fr' ? ';' : ','}`;
+  function analyticsActions(d) {
     const onScreen = d.screenPoll === 'activity';
-    return h('details', { class: 'card tools', open: state.tools },
-      h('summary', {}, '📈 ' + t('stats.title')),
-      h('div', { class: 'stack', style: 'margin-top:10px' },
+    return h('div', { class: 'row-actions' },
+      h('button', { class: `btn small ${onScreen ? 'primary' : ''}`, onclick: () => post('/settings', { screenActivity: !onScreen }) }, onScreen ? t('act.offScreen') : '📺 ' + t('act.toScreen')),
+      h('a', { class: 'btn small', href: csvHref() }, '⬇ ' + t('export.csv')),
+      h('a', { class: 'btn small', href: `${BASE}/e/${code}/report`, target: '_blank' }, '📄 ' + t('export.report')));
+  }
+  // Sidebar box (compact)
+  function statsCard(d) {
+    const s = d.stats; if (!s || state.tab === 'analytics') return null;
+    return h('section', { class: 'card analytics-box' },
+      h('div', { class: 'between' }, h('b', {}, '📈 ' + t('an.title')), h('span', { class: 'live-dot' }, t('poll.live'))),
+      activityKpis(s),
+      activityChart(s, { w: 360 }),
+      h('div', { class: 'row-actions' },
+        h('button', { class: 'btn small primary', onclick: () => { state.tab = 'analytics'; render(); window.scrollTo(0, 0); } }, '📈 ' + t('an.open'))),
+      analyticsActions(d));
+  }
+  // Full-width Analytics tab
+  function analyticsPanel(d) {
+    const s = d.stats;
+    const tile = (val, label) => h('div', { class: 'kpi' }, h('b', {}, val), h('span', {}, label));
+    const dur = s.timeline.length ? Math.max(1, s.timeline.length) : 0;
+    return h('section', { class: 'analytics-full stack' },
+      h('div', { class: 'card stack' },
+        h('div', { class: 'between' }, h('h2', { style: 'margin:0' }, '📈 ' + t('an.title')), h('span', { class: 'live-dot' }, t('poll.live'))),
+        h('p', { class: 'muted', style: 'margin:0' }, t('an.sub')),
         activityKpis(s),
-        activityChart(s, { w: 360, table: true }),
-        h('div', { class: 'kvs' },
-          row(t('stats.questions'), s.questions), row(t('stats.answered'), s.answered),
-          row(t('stats.votes'), s.votes), row(t('stats.reactions'), s.reactions),
-          row(t('stats.pollResponses'), s.pollResponses),
-          s.nps !== undefined && row(t('stats.nps'), s.nps != null ? `${s.nps > 0 ? '+' : ''}${s.nps} (${s.npsResponses})` : '—')),
-        h('div', { class: 'row-actions' },
-          h('button', { class: `btn small ${onScreen ? 'primary' : ''}`, onclick: () => post('/settings', { screenActivity: !onScreen }) }, onScreen ? t('act.offScreen') : '📺 ' + t('act.toScreen')),
-          h('a', { class: 'btn small', href: `${BASE}/api/events/${code}/export.csv?key=${encodeURIComponent(key)}&sep=${LANG === 'fr' ? ';' : ','}` }, '⬇ ' + t('export.csv')),
-          h('a', { class: 'btn small', href: `${BASE}/e/${code}/report`, target: '_blank' }, '📄 ' + t('export.report')))));
+        activityChart(s, { w: 760, table: true })),
+      h('div', { class: 'card stack' },
+        h('b', {}, '💬 ' + t('an.content')),
+        h('div', { class: 'kpis kpis-6' },
+          tile(s.questions, t('stats.questions')), tile(s.answered, t('stats.answered')),
+          tile(s.votes, t('stats.votes')), tile(s.reactions, t('stats.reactions')),
+          tile(s.pollResponses, t('stats.pollResponses')),
+          tile(s.nps !== undefined && s.nps != null ? (s.nps > 0 ? '+' : '') + s.nps : '—', t('stats.nps')),
+          tile(dur ? t('an.minutes', { n: dur }) : '—', t('an.duration')),
+          tile(s.participants ? (s.interactions / s.participants).toFixed(1) : '—', t('an.perPerson')))),
+      h('div', { class: 'card' }, h('b', {}, '⚙️ ' + t('an.actions')), analyticsActions(d)));
   }
 
   // ----- Participant / host page -----
@@ -599,7 +621,7 @@ function live(code, mode) {
     const totalVotes = liveQ.reduce((s, q) => s + q.votes, 0);
 
     const tabs = isHost
-      ? [['all', t('tab.all'), all.length], ['pending', t('tab.pending'), pending.length], ['top', t('tab.top'), null], ['new', t('tab.new'), null], ['answered', t('tab.answered'), answered.length]]
+      ? [['all', t('tab.all'), all.length], ['pending', t('tab.pending'), pending.length], ['top', t('tab.top'), null], ['new', t('tab.new'), null], ['answered', t('tab.answered'), answered.length], ['analytics', '📈 ' + t('an.tab'), null]]
       : [['top', '🔥 ' + t('tab.top'), null], ['new', '🕒 ' + t('tab.new'), null], ['mine', t('tab.mine'), mine.length], ['answered', t('tab.answered'), answered.length]];
     if (!tabs.some(x => x[0] === state.tab)) state.tab = tabs[0][0];
 
@@ -629,6 +651,7 @@ function live(code, mode) {
       side = h('aside', { class: 'side' },
         h('div', { class: 'card invite' }, qrEl(base), h('div', {}, h('div', { class: 'muted' }, t('host.enterCode')), h('div', { class: 'bigcode' }, d.code), h('div', { class: 'muted' }, base.replace(/^https?:\/\//, '')),
           h('button', { class: 'btn small', style: 'margin-top:8px', onclick: () => { navigator.clipboard?.writeText(base); toast(t('host.copied')); } }, '🔗 ' + t('host.copyLink')))),
+        statsCard(d),
         h('details', { class: 'card tools', open: state.tools, ontoggle: e => state.tools = e.target.open },
           h('summary', {}, '⚙️ ' + t('host.settings')),
           h('div', { class: 'stack', style: 'margin-top:10px' },
@@ -639,7 +662,6 @@ function live(code, mode) {
               h('button', { class: 'btn small', onclick: () => post('/settings', { moderation: !d.moderation }) }, '🛡 ' + (d.moderation ? t('host.modOn') : t('host.modOff'))),
               d.moderation && pending.length > 0 && h('button', { class: 'btn small', onclick: () => post('/settings', { approveAll: true }) }, t('host.approveAll')),
               h('button', { class: 'btn small', onclick: () => { if (d.ended || confirm(t('host.endConfirm'))) post('/settings', { ended: !d.ended }); } }, d.ended ? t('home.reopen') : '🏁 ' + t('host.end'))))),
-        statsCard(d),
         h('details', { class: 'card tools', open: state.tools },
           h('summary', {}, '📊 ' + (state.poll.editing ? t('pollf.editTitle') : t('host.newPoll'))), pollForm(d)),
         draftsCard(d),
@@ -673,7 +695,8 @@ function live(code, mode) {
       !isHost && pending.some(q => q.mine) && h('div', { class: 'banner' }, '⏳ ' + t('guest.pendingMine', { n: pending.filter(q => q.mine).length })),
       viewSwitch, teaser,
       !isHost && state.view === 'polls' ? pollsPanel(d) : [
-        h('div', { class: 'toolbar' }, tabBar, search),
+        h('div', { class: 'toolbar' }, tabBar, state.tab !== 'analytics' && search),
+        isHost && state.tab === 'analytics' && d.stats ? analyticsPanel(d) :
         list.length ? list.map((q, i) => qCard(q, state.tab === 'top' && !needle && q.status !== 'answered' ? i : -1)) : h('p', { class: 'empty' }, needle ? t('empty.search') : empty)]);
 
     const fab = !isHost && d.open && h('button', { class: 'fab', onclick: () => { state.sheet = true; render(); setTimeout(() => document.querySelector('[data-keep="qs"]')?.focus(), 50); } }, '✍️ ' + t('ask.title'));

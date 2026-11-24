@@ -9,6 +9,8 @@
 // Meetup Q&A v2 — translations (English / French)
 window.I18N = {
   en: {
+    'an.title': 'Live analytics', 'an.tab': 'Analytics', 'an.open': 'Open full analytics', 'an.sub': 'Audience and engagement minute by minute — updates live.',
+    'an.content': 'Content & participation', 'an.duration': 'Duration tracked', 'an.minutes': '{n} min', 'an.perPerson': 'Interactions per person', 'an.actions': 'Share & export',
     'pollf.saveDraft': 'Prepare for later', 'pollf.drafted': 'Poll saved in prepared polls', 'pollf.saveChanges': 'Save changes', 'pollf.saveLaunch': 'Save & launch',
     'pollf.saved': 'Changes saved', 'pollf.editing': 'Editing a prepared poll', 'pollf.editTitle': 'Edit prepared poll',
     'drafts.title': 'Prepared polls ({n})', 'drafts.hint': 'Invisible to participants', 'drafts.launch': 'Launch', 'drafts.edit': 'Edit',
@@ -125,6 +127,8 @@ window.I18N = {
     'err.limit3': 'You can send up to 3 answers', 'err.route': 'Unknown route', 'err.invalid': 'Invalid request',
   },
   fr: {
+    'an.title': 'Analytics en direct', 'an.tab': 'Analytics', 'an.open': 'Ouvrir l\'analytics complet', 'an.sub': 'Audience et engagement minute par minute — mis à jour en direct.',
+    'an.content': 'Contenu et participation', 'an.duration': 'Durée suivie', 'an.minutes': '{n} min', 'an.perPerson': 'Interactions par personne', 'an.actions': 'Partager et exporter',
     'pollf.saveDraft': 'Préparer pour plus tard', 'pollf.drafted': 'Sondage ajouté aux sondages préparés', 'pollf.saveChanges': 'Enregistrer', 'pollf.saveLaunch': 'Enregistrer et lancer',
     'pollf.saved': 'Modifications enregistrées', 'pollf.editing': 'Modification d\'un sondage préparé', 'pollf.editTitle': 'Modifier le sondage préparé',
     'drafts.title': 'Sondages préparés ({n})', 'drafts.hint': 'Invisibles pour les participants', 'drafts.launch': 'Lancer', 'drafts.edit': 'Modifier',
