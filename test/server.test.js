@@ -83,6 +83,11 @@ test('0.4 Popular keeps answered questions; 1.3 note; 1.4 merge adds votes', asy
   assert.equal(q.merged.length, 1);
   assert.equal(q.note, 'See the pricing page');
   assert.equal(q.status, 'answered');             // still returned to participants (client keeps it in Popular)
+  const asker = (await get(`/events/${code}?cid=u2`)).body.questions[0];   // u2 asked the duplicate
+  assert.equal(asker.mergedMine, true, 'the asker of a merged question can still find it');
+  assert.equal(asker.merged[0].mine, true);
+  assert.equal(asker.voted, true, 'their vote carried over');
+  assert.equal(q.mergedMine, false);
 });
 
 test('2.x poll types: multi, hidden results, rating, nps, wordcloud, open', async () => {

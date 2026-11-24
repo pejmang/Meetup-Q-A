@@ -206,11 +206,12 @@ function statsView(ev) {
 
 function view(ev, isHost, cid) {
   const questions = ev.questions
-    .filter(q => isHost || q.status !== 'pending' || q.cid === cid)
+    .filter(q => isHost || q.status !== 'pending' || q.cid === cid || (q.merged || []).some(m => m.cid === cid))
     .map(q => ({
       id: q.id, text: q.text, author: q.anon ? null : q.author, status: q.status,
       pinned: q.pinned, highlighted: q.highlighted, ts: q.ts, note: q.note || '',
-      merged: (q.merged || []).map(m => ({ text: m.text, author: m.author })),
+      merged: (q.merged || []).map(m => ({ text: m.text, author: m.author, mine: !!cid && m.cid === cid })),
+      mergedMine: !!cid && (q.merged || []).some(m => m.cid === cid),
       votes: q.voters.length, voted: q.voters.includes(cid), mine: q.cid === cid,
       reacts: EMOJIS.map(e => ({ e, n: (q.reacts?.[e] || []).length, mine: (q.reacts?.[e] || []).includes(cid) })),
     }));
@@ -455,7 +456,7 @@ const server = http.createServer(async (req, res) => {
             t.voters = [...new Set([...t.voters, ...q.voters])];
             t.reacts = t.reacts || {};
             for (const [e, arr] of Object.entries(q.reacts || {})) t.reacts[e] = [...new Set([...(t.reacts[e] || []), ...arr])];
-            t.merged = [...(t.merged || []), { text: q.text, author: q.anon ? null : q.author }, ...(q.merged || [])];
+            t.merged = [...(t.merged || []), { text: q.text, author: q.anon ? null : q.author, cid: q.cid, ts: q.ts }, ...(q.merged || [])];   // keep the asker so they can still find it
             if (q.pinned) t.pinned = true;
             if (q.note && !t.note) t.note = q.note;
             if (t.status === 'pending' && q.status !== 'pending') t.status = q.status;

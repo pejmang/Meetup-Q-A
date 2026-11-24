@@ -430,7 +430,7 @@ function live(code, mode) {
       q.highlighted && h('span', { class: 'tag warn' }, '🎤 ' + t('q.onScreen')),
       q.status === 'answered' && h('span', { class: 'tag ok' }, '✓ ' + t('q.answered')),
       q.status === 'pending' && h('span', { class: 'tag' }, '⏳ ' + t('q.pending')),
-      q.merged.length > 0 && h('span', { class: 'tag' }, '🔗 ' + t('q.mergedN', { n: q.merged.length })),
+      q.merged.length > 0 && h('span', { class: `tag ${q.mergedMine && !isHost ? 'warn' : ''}` }, '🔗 ' + (q.mergedMine && !isHost ? t('q.mergedTag') : t('q.mergedN', { n: q.merged.length }))),
     ];
     const voteBtn = h('button', { class: 'vote', 'aria-pressed': String(q.voted), 'aria-label': `${q.voted ? t('q.unvote') : t('q.upvote')} — ${q.votes}`,
       disabled: q.status === 'pending' || mode === 'screen', onclick: () => { q.voted = !q.voted; q.votes += q.voted ? 1 : -1; render(); post(`/questions/${q.id}/vote`, {}); } },
@@ -438,7 +438,7 @@ function live(code, mode) {
     const reacts = q.status === 'pending' ? null : h('div', { class: 'reacts' }, q.reacts.map(r => h('button', { class: 'react', 'aria-pressed': String(r.mine), 'aria-label': `${t('q.react')} ${r.e}`, disabled: mode === 'screen', onclick: () => post(`/questions/${q.id}/react`, { emoji: r.e }) }, r.e, r.n > 0 && h('i', {}, r.n))));
     const note = q.note && !(state.noteEdit && state.noteEdit.id === q.id) && h('div', { class: 'note' }, h('b', {}, '💬 ' + t('q.hostAnswer')), ' ', q.note);
     const merged = q.merged.length > 0 && mode !== 'screen' && h('details', { class: 'merged' }, h('summary', { class: 'muted' }, t('q.showMerged', { n: q.merged.length })),
-      h('ul', {}, q.merged.map(m => h('li', {}, m.text, h('span', { class: 'muted' }, ' — ' + (m.author || t('q.anonymous')))))));
+      h('ul', {}, q.merged.map(m => h('li', {}, m.text, h('span', { class: 'muted' }, ' — ' + (m.author || t('q.anonymous')) + (m.mine ? ' ' + t('q.you') : ''))))));
     let noteEditor = null;
     if (isHost && state.noteEdit && state.noteEdit.id === q.id) {
       noteEditor = h('form', { class: 'stack note-edit', onsubmit: async e => { e.preventDefault(); await act(q.id, 'note', { note: state.noteEdit.text }); state.noteEdit = null; render(); } },
@@ -463,7 +463,10 @@ function live(code, mode) {
     const heat = q.votes >= 10 ? 3 : q.votes >= 5 ? 2 : q.votes >= 2 ? 1 : 0;
     return h('article', { class: `card q heat${heat} ${q.highlighted ? 'hl' : ''} ${q.status} ${state.merging === q.id ? 'merging' : ''}` }, voteBtn,
       h('div', { class: 'q-body' }, tags.some(Boolean) && h('div', { class: 'tags' }, tags), h('div', { class: 'q-text' }, q.text),
-        h('div', { class: 'muted' }, (q.author || t('q.anonymous')) + (q.mine ? ' ' + t('q.you') : '') + ' · ' + ago(q.ts)), note, noteEditor, merged, reacts, acts));
+        h('div', { class: 'muted' }, (q.author || t('q.anonymous')) + (q.mine ? ' ' + t('q.you') : '') + ' · ' + ago(q.ts)),
+        !isHost && mode !== 'screen' && q.mergedMine && h('div', { class: 'merged-notice' }, '🔗 ', h('b', {}, t('q.mergedYours')), ' ',
+          q.merged.filter(m => m.mine).map(m => '« ' + m.text + ' »').join(' · '), h('div', { class: 'muted' }, t('q.mergedYoursSub'))),
+        note, noteEditor, merged, reacts, acts));
   }
 
   // ----- Poll card -----
@@ -624,7 +627,7 @@ function live(code, mode) {
     const all = d.questions;
     const liveQ = all.filter(q => q.status !== 'pending');
     const pending = all.filter(q => q.status === 'pending');
-    const mine = all.filter(q => q.mine);
+    const mine = all.filter(q => q.mine || q.mergedMine);   // a merged question still belongs to its asker
     const answered = liveQ.filter(q => q.status === 'answered');
     const byVotes = (a, b) => (b.pinned - a.pinned) || (b.votes - a.votes) || (a.ts - b.ts);
     const byNew = (a, b) => b.ts - a.ts;

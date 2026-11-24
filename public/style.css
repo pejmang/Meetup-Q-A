@@ -368,3 +368,4 @@ body.host-mode .topbar .role.admin { background: #c8a24a; color: #0b2a5b; }
 body.host-mode .toolbar { top: 82px; }
 body.admin-mode { --bg: #f1eefb; }
 @media (prefers-color-scheme: dark) { body.host-mode { --bg: #0a1530; } body.admin-mode { --bg: #120f26; } }
+.merged-notice { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--warn) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); font-size: .9rem; overflow-wrap: anywhere; }

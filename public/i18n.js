@@ -9,6 +9,7 @@
 // Meetup Q&A v2 — translations (English / French)
 window.I18N = {
   en: {
+    'q.mergedYours': 'Your question was merged with this one:', 'q.mergedYoursSub': 'It was a duplicate, so the votes were combined — your vote counts here.', 'q.mergedTag': 'Your question (merged)',
     'mode.host': 'HOST MODE — participants do not see this view', 'mode.admin': 'ADMIN MODE — you can manage all events',
     'demo.create': 'Create a simulated demo event:', 'demo.badge': 'DEMO · simulated data',
     'demo.done': 'Demo event created (all content is simulated).\n\nCode: {code}\nHost password: {pw}',
@@ -130,6 +131,7 @@ window.I18N = {
     'err.limit3': 'You can send up to 3 answers', 'err.route': 'Unknown route', 'err.invalid': 'Invalid request',
   },
   fr: {
+    'q.mergedYours': 'Votre question a été fusionnée avec celle-ci :', 'q.mergedYoursSub': 'Elle faisait doublon, les votes ont été additionnés — votre vote compte ici.', 'q.mergedTag': 'Votre question (fusionnée)',
     'mode.host': 'MODE ANIMATEUR — les participants ne voient pas cette vue', 'mode.admin': 'MODE ADMIN — vous gérez tous les événements',
     'demo.create': 'Créer un événement de démo simulé :', 'demo.badge': 'DÉMO · données simulées',
     'demo.done': 'Événement de démo créé (tout le contenu est simulé).\n\nCode : {code}\nMot de passe animateur : {pw}',
