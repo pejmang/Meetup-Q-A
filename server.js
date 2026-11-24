@@ -1,3 +1,11 @@
+/*!
+ * Meetup Q&A (ORBii Interact)
+ * Copyright (c) 2026 ORBii SAS. All rights reserved.
+ * Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE): free for any noncommercial use.
+ * Commercial use requires a separate license from ORBii SAS: info@orbii.tech
+ * https://polyformproject.org/licenses/noncommercial/1.0.0
+ */
+
 // Meetup Q&A v2 — dependency-free server (Node >= 18). Real-time via Server-Sent Events.
 'use strict';
 const http = require('http');
@@ -95,21 +103,41 @@ function lanUrls() {
 }
 
 // ---------- Activity tracking (stats) ----------
-const BUCKET = 5 * 60 * 1000;
-function track(ev) {
-  ev.activity = ev.activity || {};
-  const b = Math.floor(Date.now() / BUCKET) * BUCKET;
-  ev.activity[b] = (ev.activity[b] || 0) + 1;
+// Per-minute timeline: o = max people connected at the same time, a = interactions, u = devices that interacted.
+const MIN = 60 * 1000;
+const minuteOf = ts => Math.floor(ts / MIN) * MIN;
+function slot(ev) {
+  ev.tl = ev.tl || {};
+  const m = minuteOf(Date.now());
+  return ev.tl[m] = ev.tl[m] || { o: 0, a: 0, u: [] };
+}
+function track(ev, cid) {                                       // an interaction: question, vote, reaction, poll answer
+  const s = slot(ev);
+  s.a++;
+  if (cid && !s.u.includes(cid)) s.u.push(cid);
+  ev.actives = ev.actives || [];
+  if (cid && !ev.actives.includes(cid) && ev.actives.length < 20000) ev.actives.push(cid);
+}
+function sampleOnline(ev) {
+  const online = onlineCount(ev.code);
+  const s = slot(ev);
+  if (online > s.o) s.o = online;
+  if (online > (ev.peakOnline || 0)) { ev.peakOnline = online; ev.peakOnlineAt = Date.now(); return true; }
+  return false;
 }
 const onlineCount = code => new Set([...clients.values()].filter(c => c.code === code).map(c => c.cid || Math.random())).size;
 
 // ---------- Views by role ----------
 const EMOJIS = ['❤️', '🔥', '💡', '👏'];
 const POLL_TYPES = ['choice', 'multi', 'wordcloud', 'rating', 'nps', 'open'];
+// Event-long NPS: open for the whole meetup, not closed by other polls, results hidden from participants until closed.
+// An empty question means "use the default, translated question" on the client.
+const newNps = () => ({ id: uid(), type: 'nps', question: '', open: true, hidden: true, persistent: true, responses: {}, created: Date.now() });
 
-function pollView(p, isHost, cid) {
+function pollView(p, isHost, cid, ev) {
   const show = isHost || !p.hidden || !p.open;                  // hidden results are revealed when the poll closes
-  const v = { id: p.id, type: p.type, question: p.question, open: p.open, hidden: !!p.hidden, show, total: 0 };
+  const v = { id: p.id, type: p.type, question: p.question, open: p.open, hidden: !!p.hidden, show, total: 0,
+    persistent: !!p.persistent, onScreen: !!ev && ev.screenPoll === p.id };
   if (p.type === 'choice' || p.type === 'multi') {
     v.options = p.options.map(o => o.label);
     v.counts = show ? p.options.map(o => o.voters.length) : null;
@@ -149,16 +177,28 @@ function pollView(p, isHost, cid) {
 
 function statsView(ev) {
   const live = ev.questions.filter(q => q.status !== 'pending');
-  const timeline = Object.entries(ev.activity || {}).map(([t, n]) => [Number(t), n]).sort((a, b) => a[0] - b[0]).slice(-288);
-  const peak = timeline.reduce((m, x) => (x[1] > m[1] ? x : m), [null, 0]);
+  // Continuous per-minute series (gaps = nobody connected / no interaction), last 12 hours at most
+  const keys = Object.keys(ev.tl || {}).map(Number).sort((a, b) => a - b);
+  const timeline = [];
+  if (keys.length) {
+    const end = Math.max(keys[keys.length - 1], ev.ended ? 0 : minuteOf(Date.now()));
+    for (let m = Math.max(keys[0], end - 719 * MIN); m <= end; m += MIN) {
+      const x = ev.tl[m];
+      timeline.push({ t: m, online: x ? x.o : 0, actions: x ? x.a : 0, active: x ? x.u.length : 0 });
+    }
+  }
+  const peakA = timeline.reduce((m, x) => (x.actions > m.n ? { t: x.t, n: x.actions } : m), { t: null, n: 0 });
   const pollResponses = ev.polls.reduce((s, p) => s + pollView(p, true, '').total, 0);
   return {
-    participants: (ev.participants || []).length, peakOnline: ev.peakOnline || 0,
+    participants: new Set([...(ev.participants || []), ...(ev.actives || [])]).size, peakOnline: ev.peakOnline || 0, peakOnlineAt: ev.peakOnlineAt || null,
+    online: onlineCount(ev.code), activeUsers: (ev.actives || []).length,
+    interactions: Object.values(ev.tl || {}).reduce((a, x) => a + x.a, 0),
     questions: live.length, answered: live.filter(q => q.status === 'answered').length,
     votes: live.reduce((s, q) => s + q.voters.length, 0),
     reactions: live.reduce((s, q) => s + Object.values(q.reacts || {}).reduce((a, r) => a + r.length, 0), 0),
     polls: ev.polls.length, pollResponses,
-    peak: { ts: peak[0], n: peak[1] }, timeline, bucketMinutes: BUCKET / 60000,
+    ...(() => { const n = ev.polls.find(p => p.persistent); if (!n) return {}; const v = pollView(n, true, ''); return { nps: v.nps ?? null, npsResponses: v.total }; })(),
+    peak: { ts: peakA.t, n: peakA.n }, timeline,
     created: ev.created, endedAt: ev.endedAt || null,
   };
 }
@@ -175,9 +215,9 @@ function view(ev, isHost, cid) {
     }));
   return {
     code: ev.code, title: ev.title, open: ev.open, moderation: ev.moderation, host: isHost, ended: !!ev.ended,
-    created: ev.created, online: onlineCount(ev.code), questions,
-    polls: ev.polls.map(p => pollView(p, isHost, cid)),
-    ...(isHost ? { stats: statsView(ev) } : {}),
+    created: ev.created, online: onlineCount(ev.code), questions, screenPoll: ev.screenPoll || null,
+    polls: ev.polls.map(p => pollView(p, isHost, cid, ev)),
+    ...(isHost || ev.screenPoll === 'activity' ? { stats: statsView(ev) } : {}),
   };
 }
 
@@ -186,14 +226,15 @@ const clients = new Map(); // res -> { code, host, cid }
 function broadcast(code) {
   const ev = events[code];
   if (!ev) return;
-  const online = onlineCount(code);
-  if (online > (ev.peakOnline || 0)) { ev.peakOnline = online; save(); }
+  if (sampleOnline(ev)) save();
   for (const [res, c] of clients) {
     if (c.code !== code) continue;
     res.write(`data: ${JSON.stringify(view(ev, c.host, c.cid))}\n\n`);
   }
 }
 setInterval(() => { for (const res of clients.keys()) res.write(': ping\n\n'); }, 25000).unref();
+// Every 30 s: sample who is connected (so the live chart moves even when nobody interacts) and push fresh stats
+setInterval(() => { for (const code of new Set([...clients.values()].map(c => c.code))) broadcast(code); save(); }, 30000).unref();
 
 // ---------- CSV export ----------
 function csv(ev, sep) {
@@ -202,14 +243,15 @@ function csv(ev, sep) {
   const iso = ts => ts ? new Date(ts).toISOString().replace('T', ' ').slice(0, 16) : '';
   const out = [row(['Event', ev.title]), row(['Code', ev.code]), row(['Created (UTC)', iso(ev.created)]), ''];
   const st = statsView(ev);
-  out.push(row(['Participants', st.participants]), row(['Peak online', st.peakOnline]), row(['Questions', st.questions]), row(['Votes', st.votes]), row(['Poll responses', st.pollResponses]), '');
+  out.push(row(['Participants (connected)', st.participants]), row(['Active participants', st.activeUsers]), row(['Interactions', st.interactions]), row(['Peak online', st.peakOnline]), row(['Peak online at (UTC)', iso(st.peakOnlineAt)]), row(['Questions', st.questions]), row(['Votes', st.votes]), row(['Poll responses', st.pollResponses]), '');
   out.push(row(['Rank', 'Question', 'Author', 'Votes', 'Status', 'Pinned', 'Host note', 'Merged questions', ...EMOJIS, 'Asked at (UTC)']));
   const qs = ev.questions.filter(q => q.status !== 'pending').sort((a, b) => b.voters.length - a.voters.length || a.ts - b.ts);
   qs.forEach((q, i) => out.push(row([i + 1, q.text, q.anon ? 'Anonymous' : q.author, q.voters.length, q.status, q.pinned ? 'yes' : '', q.note || '',
     (q.merged || []).map(m => m.text).join(' | '), ...EMOJIS.map(e => (q.reacts?.[e] || []).length), iso(q.ts)])));
   out.push('', row(['Poll', 'Type', 'Answer', 'Count']));
-  for (const p of ev.polls) {
+  for (let p of ev.polls) {
     const v = pollView(p, true, '');
+    if (p.persistent) p = { ...p, question: 'Event NPS' };
     if (v.options) v.options.forEach((o, i) => out.push(row([p.question, p.type, o, v.counts[i]])));
     else if (v.dist) { v.dist.forEach((n, i) => out.push(row([p.question, p.type, i + v.min, n]))); out.push(row([p.question, p.type, p.type === 'nps' ? 'NPS' : 'Average', p.type === 'nps' ? v.nps ?? '' : v.avg?.toFixed(2) ?? ''])); }
     else if (v.words) v.words.forEach(w => out.push(row([p.question, p.type, w.w, w.n])));
@@ -288,6 +330,7 @@ const server = http.createServer(async (req, res) => {
         const hostKey = crypto.randomBytes(12).toString('hex');
         events[code] = { code, title, hostKey, hostPass: hashPw(hostPassword), open: true, moderation: !!b.moderation,
           questions: [], polls: [], created: Date.now(), participants: [], peakOnline: 0, activity: {} };
+        if (b.nps !== false) events[code].polls.push(newNps());
         save();
         return json(res, 200, { code, hostKey });
       }
@@ -361,14 +404,14 @@ const server = http.createServer(async (req, res) => {
           cid: bcid, ts: Date.now(), voters: [bcid], status: ev.moderation ? 'pending' : 'live',
           pinned: false, highlighted: false, note: '', merged: [],
         });
-        track(ev);
+        track(ev, bcid);
       }
       // Upvote a question
       else if (parts[3] === 'questions' && parts[5] === 'vote') {
         const q = ev.questions.find(x => x.id === parts[4]);
         if (!q || q.status === 'pending' || !bcid) return json(res, 404, { error: 'err.qNotFound' });
         const i = q.voters.indexOf(bcid);
-        if (i >= 0) q.voters.splice(i, 1); else { q.voters.push(bcid); track(ev); }
+        if (i >= 0) q.voters.splice(i, 1); else { q.voters.push(bcid); track(ev, bcid); }
       }
       // Emoji reaction
       else if (parts[3] === 'questions' && parts[5] === 'react') {
@@ -377,7 +420,7 @@ const server = http.createServer(async (req, res) => {
         q.reacts = q.reacts || {};
         const arr = q.reacts[b.emoji] = q.reacts[b.emoji] || [];
         const i = arr.indexOf(bcid);
-        if (i >= 0) arr.splice(i, 1); else { arr.push(bcid); track(ev); }
+        if (i >= 0) arr.splice(i, 1); else { arr.push(bcid); track(ev, bcid); }
       }
       // Host actions on a question
       else if (parts[3] === 'questions' && parts[5] === 'action') {
@@ -420,16 +463,22 @@ const server = http.createServer(async (req, res) => {
         if (typeof b.ended === 'boolean') { ev.ended = b.ended; if (b.ended) { ev.open = false; ev.endedAt = Date.now(); } else ev.endedAt = null; }
         if (typeof b.open === 'boolean') { ev.open = b.open; if (b.open) { ev.ended = false; ev.endedAt = null; } }
         if (typeof b.moderation === 'boolean') ev.moderation = b.moderation;
+        if (typeof b.screenActivity === 'boolean') ev.screenPoll = b.screenActivity ? 'activity' : null;
         if (b.approveAll) ev.questions.forEach(q => { if (q.status === 'pending') q.status = 'live'; });
       }
       // Polls: create
       else if (parts[3] === 'polls' && parts.length === 4) {
         if (!hostOk) return json(res, 403, { error: 'err.hostOnly' });
+        if (b.persistent) {                                     // the event-long NPS (one per event)
+          if (ev.polls.some(p => p.persistent)) return json(res, 400, { error: 'err.npsExists' });
+          ev.polls.push(newNps());
+          save(); broadcast(code); return json(res, 200, { ok: true });
+        }
         const type = POLL_TYPES.includes(b.type) ? b.type : 'choice';
         const question = clean(b.question, 140);
         const opts = (Array.isArray(b.options) ? b.options : []).map(o => clean(o, 60)).filter(Boolean).slice(0, 8);
         if (!question || ((type === 'choice' || type === 'multi') && opts.length < 2)) return json(res, 400, { error: 'err.pollInvalid' });
-        ev.polls.forEach(p => p.open = false);
+        ev.polls.forEach(p => { if (!p.persistent) p.open = false; });
         const poll = { id: uid(), type, question, open: true, hidden: !!b.hidden, created: Date.now() };
         if (type === 'choice' || type === 'multi') poll.options = opts.map(label => ({ label, voters: [] }));
         else poll.responses = (type === 'rating' || type === 'nps') ? {} : [];
@@ -460,16 +509,17 @@ const server = http.createServer(async (req, res) => {
           if (p.responses.filter(r => r.cid === bcid).length >= 3) return json(res, 400, { error: 'err.limit3' });
           p.responses.push({ id: uid(), cid: bcid, text, ts: Date.now() });
         }
-        track(ev);
+        track(ev, bcid);
       }
       // Polls: host actions
       else if (parts[3] === 'polls' && parts[5] === 'action') {
         if (!hostOk) return json(res, 403, { error: 'err.hostOnly' });
         const p = ev.polls.find(x => x.id === parts[4]);
         if (!p) return json(res, 404, { error: 'err.pollNotFound' });
-        if (b.action === 'toggle') { if (!p.open) ev.polls.forEach(x => x.open = false); p.open = !p.open; }
+        if (b.action === 'toggle') { if (!p.open && !p.persistent) ev.polls.forEach(x => { if (!x.persistent) x.open = false; }); p.open = !p.open; }
         else if (b.action === 'reveal') p.hidden = !p.hidden;
-        else if (b.action === 'delete') ev.polls = ev.polls.filter(x => x !== p);
+        else if (b.action === 'screen') ev.screenPoll = ev.screenPoll === p.id ? null : p.id;
+        else if (b.action === 'delete') { ev.polls = ev.polls.filter(x => x !== p); if (ev.screenPoll === p.id) ev.screenPoll = null; }
         else if (b.action === 'removeResponse' && Array.isArray(p.responses)) {
           p.responses = p.responses.filter(r => !(b.rid && r.id === b.rid) && !(b.word && r.word && r.word.toLowerCase() === String(b.word).toLowerCase()));
         }

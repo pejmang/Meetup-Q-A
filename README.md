@@ -80,3 +80,14 @@ Put a reverse proxy in front (see `nginx.conf.example`). Important: `proxy_buffe
 - Single instance (real-time state is in memory) — no horizontal scaling.
 - One vote per device (ID stored in the browser), not per person.
 - The QR code is generated in the browser via cdnjs (internet required).
+
+## License
+
+Copyright © 2026 **ORBii SAS**. All rights reserved.
+
+This software is released under the **[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)** (see [`LICENSE`](LICENSE)):
+
+- ✅ **Free for any noncommercial use**: personal use, research, education, nonprofits, public institutions, community meetups. You may use, modify and share it, keeping the copyright notice.
+- 💼 **Commercial use** (selling it, including it in a paid offer, using it to generate revenue) **requires a separate license from ORBii SAS**: **info@orbii.tech**
+
+Note: this is a *source-available* license. It does not meet the OSI "open source" definition, because that definition does not allow restricting commercial use.

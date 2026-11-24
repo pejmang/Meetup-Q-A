@@ -1,6 +1,35 @@
+/*!
+ * Meetup Q&A (ORBii Interact)
+ * Copyright (c) 2026 ORBii SAS. All rights reserved.
+ * Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE): free for any noncommercial use.
+ * Commercial use requires a separate license from ORBii SAS: info@orbii.tech
+ * https://polyformproject.org/licenses/noncommercial/1.0.0
+ */
+
 // Meetup Q&A v2 — translations (English / French)
 window.I18N = {
   en: {
+    'act.now': 'Connected now', 'act.peak': 'Peak at the same time', 'act.at': 'at {time}', 'act.total': 'People connected (total)',
+    'act.active': 'Active participants', 'act.engagement': '{n}% engagement', 'act.interactions': 'Interactions', 'act.peakAct': 'peak {n}/min at {time}',
+    'act.noData': 'No activity yet.', 'act.people': 'People', 'act.perMin': 'Interactions per minute',
+    'act.peakLbl': 'Peak: {n} at {time}', 'act.lgOnline': 'Connected', 'act.lgActive': 'Active', 'act.lgActions': 'Interactions',
+    'act.aria': 'Live activity chart. Peak of {peak} people connected at the same time, {active} active participants out of {total} connected.',
+    'act.table': 'Show the data table', 'act.time': 'Time', 'act.toScreen': 'Show activity on screen', 'act.offScreen': 'Remove activity from screen',
+    'act.screenTitle': 'Live audience & engagement',
+    'nps.defaultQ': 'How likely are you to recommend this meetup to a friend or colleague?',
+    'nps.sub': 'Open for the whole event — you can change your score at any time.',
+    'poll.live': 'LIVE', 'poll.allEvent': 'ALL EVENT', 'poll.onScreen': 'On screen', 'poll.toScreen': 'Show on screen', 'poll.offScreen': 'Remove from screen',
+    'poll.recorded': 'Answer recorded — you can change it while the poll is open', 'poll.sent': 'Thanks, answer sent', 'poll.thanks': 'Thanks for your answer!',
+    'poll.noneLive': 'No live poll right now', 'poll.noneLiveSub': 'The next poll will appear here automatically.', 'poll.answer': 'Answer',
+    'view.questions': 'Questions', 'view.polls': 'Polls',
+    'pollf.type': 'Poll type', 'pollf.option': 'Option {n}', 'pollf.addOption': 'Add option', 'pollf.launched': 'Poll launched', 'pollf.addNps': 'Add the event NPS',
+    'pollf.questionPh.choice': 'e.g. Which topic should we cover next?', 'pollf.questionPh.multi': 'e.g. Which tools do you use?',
+    'pollf.questionPh.wordcloud': 'e.g. AI in one word?', 'pollf.questionPh.rating': 'e.g. How would you rate this talk?',
+    'pollf.questionPh.nps': 'e.g. Would you recommend this talk?', 'pollf.questionPh.open': 'e.g. What should we improve?',
+    'pdesc.choice': 'One answer', 'pdesc.multi': 'Several answers', 'pdesc.wordcloud': 'Live cloud of words', 'pdesc.rating': 'Stars 1 to 5', 'pdesc.nps': 'Score 0 to 10', 'pdesc.open': 'Free text answers',
+    'preset.yes': 'Yes', 'preset.no': 'No', 'preset.dontKnow': 'Don\'t know',
+    'stats.nps': 'Event NPS', 'report.npsBased': 'Based on {n} response(s). NPS = % promoters (9–10) − % detractors (0–6).',
+    'err.npsExists': 'This event already has an NPS',
     'lang.switch': 'Passer en français',
     'qr.label': 'QR code to join',
     'time.now': 'just now', 'time.min': '{n} min ago', 'time.h': '{n} h ago', 'time.d': '{n} d ago',
@@ -93,6 +122,27 @@ window.I18N = {
     'err.limit3': 'You can send up to 3 answers', 'err.route': 'Unknown route', 'err.invalid': 'Invalid request',
   },
   fr: {
+    'act.now': 'Connectés maintenant', 'act.peak': 'Pic simultané', 'act.at': 'à {time}', 'act.total': 'Personnes connectées (total)',
+    'act.active': 'Participants actifs', 'act.engagement': '{n} % d\'engagement', 'act.interactions': 'Interactions', 'act.peakAct': 'pic {n}/min à {time}',
+    'act.noData': 'Pas encore d\'activité.', 'act.people': 'Personnes', 'act.perMin': 'Interactions par minute',
+    'act.peakLbl': 'Pic : {n} à {time}', 'act.lgOnline': 'Connectés', 'act.lgActive': 'Actifs', 'act.lgActions': 'Interactions',
+    'act.aria': 'Graphique d\'activité en direct. Pic de {peak} personnes connectées simultanément, {active} participants actifs sur {total} connectés.',
+    'act.table': 'Voir le tableau des données', 'act.time': 'Heure', 'act.toScreen': 'Afficher l\'activité à l\'écran', 'act.offScreen': 'Retirer l\'activité de l\'écran',
+    'act.screenTitle': 'Audience et engagement en direct',
+    'nps.defaultQ': 'Quelle est la probabilité que vous recommandiez ce meetup à un ami ou un collègue ?',
+    'nps.sub': 'Ouvert pendant tout l\'événement — vous pouvez modifier votre note à tout moment.',
+    'poll.live': 'EN DIRECT', 'poll.allEvent': 'TOUT L\'ÉVÉNEMENT', 'poll.onScreen': 'À l\'écran', 'poll.toScreen': 'Afficher à l\'écran', 'poll.offScreen': 'Retirer de l\'écran',
+    'poll.recorded': 'Réponse enregistrée — modifiable tant que le sondage est ouvert', 'poll.sent': 'Merci, réponse envoyée', 'poll.thanks': 'Merci pour votre réponse !',
+    'poll.noneLive': 'Aucun sondage en cours', 'poll.noneLiveSub': 'Le prochain sondage apparaîtra ici automatiquement.', 'poll.answer': 'Répondre',
+    'view.questions': 'Questions', 'view.polls': 'Sondages',
+    'pollf.type': 'Type de sondage', 'pollf.option': 'Option {n}', 'pollf.addOption': 'Ajouter une option', 'pollf.launched': 'Sondage lancé', 'pollf.addNps': 'Ajouter le NPS de l\'événement',
+    'pollf.questionPh.choice': 'Ex. Quel sujet aborder ensuite ?', 'pollf.questionPh.multi': 'Ex. Quels outils utilisez-vous ?',
+    'pollf.questionPh.wordcloud': 'Ex. L\'IA en un mot ?', 'pollf.questionPh.rating': 'Ex. Comment notez-vous cette intervention ?',
+    'pollf.questionPh.nps': 'Ex. Recommanderiez-vous cette intervention ?', 'pollf.questionPh.open': 'Ex. Que pourrions-nous améliorer ?',
+    'pdesc.choice': 'Une seule réponse', 'pdesc.multi': 'Plusieurs réponses', 'pdesc.wordcloud': 'Nuage de mots en direct', 'pdesc.rating': 'Étoiles de 1 à 5', 'pdesc.nps': 'Note de 0 à 10', 'pdesc.open': 'Réponses libres',
+    'preset.yes': 'Oui', 'preset.no': 'Non', 'preset.dontKnow': 'Je ne sais pas',
+    'stats.nps': 'NPS de l\'événement', 'report.npsBased': 'Sur {n} réponse(s). NPS = % promoteurs (9–10) − % détracteurs (0–6).',
+    'err.npsExists': 'Cet événement a déjà un NPS',
     'lang.switch': 'Switch to English',
     'qr.label': 'QR code pour rejoindre',
     'time.now': 'à l\'instant', 'time.min': 'il y a {n} min', 'time.h': 'il y a {n} h', 'time.d': 'il y a {n} j',

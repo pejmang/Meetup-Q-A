@@ -1,3 +1,11 @@
+/*!
+ * Meetup Q&A (ORBii Interact)
+ * Copyright (c) 2026 ORBii SAS. All rights reserved.
+ * Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE): free for any noncommercial use.
+ * Commercial use requires a separate license from ORBii SAS: info@orbii.tech
+ * https://polyformproject.org/licenses/noncommercial/1.0.0
+ */
+
 // Run with: npm test   (Node >= 18, no dependencies)
 'use strict';
 const { test, before, after } = require('node:test');
@@ -116,6 +124,25 @@ test('2.x poll types: multi, hidden results, rating, nps, wordcloud, open', asyn
   const open = (await get(`/events/${code}?cid=x`)).body.polls[0];
   await post(`${P}/${open.id}/vote`, { cid: 'a', text: 'Great session' });
   assert.equal((await get(`/events/${code}?cid=x`)).body.polls[0].responses[0].text, 'Great session');
+});
+
+test('event-long NPS: created by default, stays open when other polls launch, one per event, can go on screen', async () => {
+  let v = (await get(`/events/${code}?key=${hostKey}`)).body;
+  const nps = v.polls.find(p => p.persistent);
+  assert.ok(nps, 'created with the event');
+  assert.equal(nps.type, 'nps');
+  assert.equal(nps.open, true, 'still open after 6 other polls were launched');
+  assert.equal((await post(`/events/${code}/polls`, { key: hostKey, persistent: true })).status, 400);
+  assert.equal((await post(`/events/${code}/polls/${nps.id}/vote`, { cid: 'n1', value: 9 })).status, 200);
+  assert.equal((await post(`/events/${code}/polls/${nps.id}/vote`, { cid: 'n1', value: 4 })).status, 200, 'vote can be changed');
+  const guest = (await get(`/events/${code}?cid=n1`)).body.polls.find(p => p.persistent);
+  assert.equal(guest.mine, 4);
+  assert.equal(guest.dist, undefined, 'results hidden from participants while open');
+  await post(`/events/${code}/polls/${nps.id}/action`, { key: hostKey, action: 'screen' });
+  v = (await get(`/events/${code}?key=${hostKey}`)).body;
+  assert.equal(v.screenPoll, nps.id);
+  assert.equal(v.stats.npsResponses, 1);
+  assert.equal(v.stats.nps, -100);
 });
 
 test('1.1 CSV export (host only) and 1.5 stats', async () => {
