@@ -529,3 +529,5 @@ body.screen .react { background: color-mix(in srgb, #fff 12%, var(--bg)); }
 @keyframes hl-back { from { transform: perspective(900px) translateY(-6px) scale(1.045); box-shadow: 0 14px 28px -6px rgba(11,42,91,.28), 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
   to { transform: none; box-shadow: var(--shadow); } }
 @media (prefers-reduced-motion: reduce) { .q.hl-out, .main.has-hl > .q:not(.hl) { animation: none; transition: none; transform: none; } }
+.demo-banner { padding: 8px 12px; border-radius: 10px; font-size: .86rem; background: color-mix(in srgb, #7b5cd6 12%, var(--card)); border: 1px solid color-mix(in srgb, #7b5cd6 45%, transparent); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }

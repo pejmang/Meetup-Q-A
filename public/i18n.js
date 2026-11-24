@@ -9,6 +9,9 @@
 // Meetup Q&A v2 — translations (English / French)
 window.I18N = {
   en: {
+    'demo.bannerTitle': 'Demo — simulated data.', 'demo.bannerText': 'Try everything: it resets every {every} min (next reset in {n} min).',
+    'demo.locked': 'Locked in the demo: end event, close questions and moderation.', 'demo.reset': 'Reset demo', 'demo.resetConfirm': 'Reset this demo to its initial content now?', 'demo.resetDone': 'Demo reset',
+    'err.demoLocked': 'This setting is locked in the demo',
     'q.onScreenBadge': 'ON SCREEN',
     'ag.tab': 'Agenda', 'ag.whole': 'Whole meetup', 'ag.now': 'NOW', 'ag.done': 'Done', 'ag.upcoming': 'Upcoming',
     'ag.ask': 'Ask about this session', 'ag.askShort': 'Ask', 'ag.seeQ': 'Questions ({n})', 'ask.to': 'Your question is for:',
@@ -156,6 +159,9 @@ window.I18N = {
     'err.limit3': 'You can send up to 3 answers', 'err.route': 'Unknown route', 'err.invalid': 'Invalid request',
   },
   fr: {
+    'demo.bannerTitle': 'Démo — données simulées.', 'demo.bannerText': 'Testez tout : elle est remise à zéro toutes les {every} min (prochaine dans {n} min).',
+    'demo.locked': 'Verrouillé dans la démo : terminer l\'événement, fermer les questions et la modération.', 'demo.reset': 'Réinitialiser la démo', 'demo.resetConfirm': 'Remettre cette démo à son contenu initial maintenant ?', 'demo.resetDone': 'Démo réinitialisée',
+    'err.demoLocked': 'Ce réglage est verrouillé dans la démo',
     'q.onScreenBadge': 'À L\'ÉCRAN',
     'ag.tab': 'Agenda', 'ag.whole': 'Tout le meetup', 'ag.now': 'EN COURS', 'ag.done': 'Terminée', 'ag.upcoming': 'À venir',
     'ag.ask': 'Poser une question sur cette session', 'ag.askShort': 'Poser une question', 'ag.seeQ': 'Questions ({n})', 'ask.to': 'Votre question s\'adresse à :',

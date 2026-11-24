@@ -166,6 +166,7 @@ function aggregate(tl, keys, from, to, r) {
 // ---------- Agenda (sessions) ----------
 // Events created before this feature have no 'sessions' field: treated as an empty agenda, no migration.
 const MAX_SESSIONS = 20;
+const DEMO_RESET_MIN = Number(process.env.DEMO_RESET_MIN) || 30;
 const SESSION_STATUS = ['upcoming', 'live', 'done'];
 const sessionsOf = ev => (ev.sessions || []).slice().sort((a, b) => a.order - b.order);
 function sessionFields(b) {
@@ -275,6 +276,7 @@ function view(ev, isHost, cid, isScreen) {
     code: ev.code, title: ev.title, open: ev.open, moderation: ev.moderation, host: isHost, ended: !!ev.ended, demo: !!ev.demo,
     created: ev.created, online: onlineCount(ev.code), questions, screenPoll: ev.screenPoll || null,
     sessions: sessionsOf(ev), screenSessionOnly: !!ev.screenSessionOnly,
+    ...(ev.demo ? { demoResetAt: ev.demoResetAt || null, demoResetMin: DEMO_RESET_MIN } : {}),
     polls: ev.polls.filter(p => isHost || !p.draft).map(p => pollView(p, isHost, cid, ev, isScreen)),
     ...(isHost || ev.screenPoll === 'activity' || ratedNps(ev, cid) ? { stats: statsView(ev) } : {}),
   };
@@ -408,7 +410,8 @@ const server = http.createServer(async (req, res) => {
         if (hostPassword.length < 4 || hostPassword.length > 64) return json(res, 400, { error: 'err.hostPw' });
         const code = newCode();
         const hostKey = crypto.randomBytes(12).toString('hex');
-        events[code] = buildDemo({ lang: b.lang === 'fr' ? 'fr' : 'en', code, hostKey, hostPass: hashPw(hostPassword), uid, days: Math.min(5, Math.max(1, Number(b.days) || 1)) });
+        const demoCfg = { lang: b.lang === 'fr' ? 'fr' : 'en', days: Math.min(5, Math.max(1, Number(b.days) || 1)) };
+        events[code] = { ...buildDemo({ ...demoCfg, code, hostKey, hostPass: hashPw(hostPassword), uid }), demoCfg, demoResetAt: Date.now() + DEMO_RESET_MIN * MIN };
         save();
         return json(res, 200, { code, hostKey });
       }
@@ -471,6 +474,13 @@ const server = http.createServer(async (req, res) => {
         if (checkPw(b.password, ev.hostPass) || isAdminPw(b.password) || adminOk) return json(res, 200, { hostKey: ev.hostKey });
         await delay(700);
         return json(res, 401, { error: 'err.hostPassword' });
+      }
+      // Reset a demo event now (admin only)
+      if (parts[3] === 'demo-reset') {
+        if (!adminOk) return json(res, 403, { error: 'err.adminOnly' });
+        if (!ev.demo) return json(res, 400, { error: 'err.action' });
+        resetDemo(code);
+        return json(res, 200, { ok: true });
       }
       // Set / reset the host password (admin only). Rotates the host key: current hosts are signed out.
       if (parts[3] === 'host-password') {
@@ -562,6 +572,7 @@ const server = http.createServer(async (req, res) => {
           delete events[code]; save();
           return json(res, 200, { ok: true });
         }
+        if (ev.demo && !adminOk && ['ended', 'open', 'moderation'].some(k => typeof b[k] === 'boolean')) return json(res, 403, { error: 'err.demoLocked' });
         if (typeof b.ended === 'boolean') { ev.ended = b.ended; if (b.ended) { ev.open = false; ev.endedAt = Date.now(); } else ev.endedAt = null; }
         if (typeof b.open === 'boolean') { ev.open = b.open; if (b.open) { ev.ended = false; ev.endedAt = null; } }
         if (typeof b.moderation === 'boolean') ev.moderation = b.moderation;
@@ -700,6 +711,21 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
   fs.createReadStream(file).pipe(res);
 });
+
+// ---------- Demo events: automatic reset ----------
+// Public demos are regenerated every DEMO_RESET_MIN minutes (fresh timestamps and audience curve, same code and
+// host password), so visitors can try everything without breaking the demo for the next ones.
+function resetDemo(code) {
+  const ev = events[code]; if (!ev || !ev.demo) return;
+  const demoCfg = ev.demoCfg || { lang: 'en', days: 1 };
+  events[code] = { ...buildDemo({ ...demoCfg, code, hostKey: ev.hostKey, hostPass: ev.hostPass, uid }), demoCfg, demoResetAt: Date.now() + DEMO_RESET_MIN * MIN };
+  save(); broadcast(code);
+}
+for (const ev of Object.values(events)) if (ev.demo) {
+  if (!ev.demoCfg) ev.demoCfg = { lang: /^Démo/.test(ev.title) ? 'fr' : 'en', days: Number((ev.title.match(/\((\d) (?:days|jours)/) || [])[1]) || 1 };
+  if (!ev.demoResetAt) ev.demoResetAt = Date.now() + DEMO_RESET_MIN * MIN;
+}
+setInterval(() => { const now = Date.now(); for (const ev of Object.values(events)) if (ev.demo && ev.demoResetAt <= now) resetDemo(ev.code); }, 20000).unref();
 
 // Upgrade v1 data in place (polls without a type are single-choice polls)
 for (const ev of Object.values(events)) for (const p of ev.polls || []) if (!p.type) p.type = 'choice';
