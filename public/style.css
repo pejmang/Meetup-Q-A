@@ -486,3 +486,5 @@ body.screen .react { background: color-mix(in srgb, #fff 12%, var(--bg)); }
 .screen-brand { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); font-size: .78rem; color: var(--muted); letter-spacing: .02em; }
 .screen-brand b { color: var(--accent); }
 @media print { .brand-foot { display: block; } }
+.screen-brand span { font-size: .72rem; opacity: .85; }
+.brand-foot .nowrap { white-space: nowrap; }
