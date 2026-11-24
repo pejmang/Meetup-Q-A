@@ -519,7 +519,7 @@ function live(code, mode) {
     const tags = [
       medal && h('span', { class: 'tag rank' }, medal + ' Top ' + (rank + 1)),
       q.pinned && h('span', { class: 'tag warn' }, '📌 ' + t('q.pinned')),
-      q.highlighted && h('span', { class: 'tag warn' }, '🎤 ' + t('q.onScreen')),
+      q.highlighted && h('span', { class: 'tag onscreen' }, '🎤 ' + t('q.onScreenBadge')),
       q.status === 'answered' && h('span', { class: 'tag ok' }, '✓ ' + t('q.answered')),
       q.status === 'pending' && h('span', { class: 'tag' }, '⏳ ' + t('q.pending')),
       q.sessionId && sessById(q.sessionId) && h('span', { class: 'tag sess' }, '🎤 ' + sessById(q.sessionId).title),
@@ -546,7 +546,7 @@ function live(code, mode) {
     } else if (isHost) {
       acts = h('div', { class: 'row-actions' },
         q.status === 'pending' && h('button', { class: 'btn small primary', onclick: () => act(q.id, 'approve') }, '✔ ' + t('q.approve')),
-        q.status !== 'pending' && h('button', { class: 'btn small', onclick: () => act(q.id, 'highlight') }, q.highlighted ? t('q.unscreen') : '🎤 ' + t('q.screen')),
+        q.status !== 'pending' && h('button', { class: `btn small ${q.highlighted ? 'primary screen-on' : ''}`, 'aria-pressed': String(!!q.highlighted), onclick: () => act(q.id, 'highlight') }, q.highlighted ? '✕ ' + t('q.unscreen') : '🎤 ' + t('q.screen')),
         q.status !== 'pending' && h('button', { class: 'btn small', onclick: () => act(q.id, 'answer') }, q.status === 'answered' ? '↩ ' + t('q.reopen') : '✓ ' + t('q.markAnswered')),
         h('button', { class: 'btn small', onclick: () => { state.noteEdit = { id: q.id, text: q.note }; render(); setTimeout(() => document.querySelector(`[data-keep="note${q.id}"]`)?.focus(), 30); } }, '💬 ' + (q.note ? t('q.editNote') : t('q.addNote'))),
         h('button', { class: 'btn small', onclick: () => act(q.id, 'pin') }, q.pinned ? t('q.unpin') : '📌 ' + t('q.pin')),
@@ -830,6 +830,7 @@ function live(code, mode) {
       default: list = [...liveQ].sort(byVotes);   // Popular keeps answered questions: the final ranking stays visible
     }
     list = list.filter(inScope);
+    if (!state.q.trim()) list.sort((a, b) => (b.highlighted ? 1 : 0) - (a.highlighted ? 1 : 0));   // stable: keeps the tab's order otherwise
     if (needle) list = list.filter(q => q.text.toLowerCase().includes(needle) || (q.author || '').toLowerCase().includes(needle) || q.merged.some(m => m.text.toLowerCase().includes(needle)));
 
     const stat = (n, label) => h('div', { class: 'stat' }, h('b', {}, n), h('span', {}, label));
@@ -936,7 +937,7 @@ function live(code, mode) {
     if (d.screenPoll === 'activity' && d.stats) {
       mainBlock = h('div', { class: 'screen-act' }, h('h2', {}, '📈 ' + t('act.screenTitle')), activityKpis(d.stats), activityChart(d.stats, { w: 900, big: true, range: 'recent' }));
     } else if (hl) {
-      mainBlock = h('div', {}, h('div', { class: 'big-q' }, '« ' + hl.text + ' »'), h('div', { class: 'muted' }, (hl.author || t('q.anonymous')) + ' · 👍 ' + hl.votes),
+      mainBlock = h('div', { class: 'stage-card', key: hl.id }, h('div', { class: 'stage-badge' }, '🎤 ' + t('q.onScreenBadge')), h('div', { class: 'big-q' }, '« ' + hl.text + ' »'), h('div', { class: 'muted stage-meta' }, (hl.author || t('q.anonymous')) + ' · 👍 ' + hl.votes),
         hl.note && h('div', { class: 'note big' }, '💬 ' + hl.note));
     } else if (poll) {
       mainBlock = h('div', { class: 'screen-poll' }, h('div', { class: 'tags' }, h('span', { class: 'tag ok' }, TYPE_ICON[poll.type] + ' ' + t('ptype.' + poll.type))),
