@@ -232,6 +232,9 @@ test('simulated demo event: admin only, complete and consistent', async () => {
   const reset = (await get(`/events/${dc}?key=${dk}`)).body;
   assert.equal(reset.questions.length, pv.questions.length, 'content restored');
   assert.equal(reset.sessions.length, 3, 'agenda restored');
+  assert.equal(reset.title, pv.title, 'title unchanged by repeated resets');
+  await post(`/events/${dc}/demo-reset`, { token });
+  assert.equal((await get(`/events/${dc}?key=${dk}`)).body.title, pv.title);
   assert.equal((await post(`/events/${dc}/host-login`, { password: 'demo1234' })).body.hostKey, dk, 'same code and host password after reset');
   await stop(proc); proc = await start({});
   assert.equal((await post(`/events/${r.body.code}/settings`, { token, delete: true })).status, 200);

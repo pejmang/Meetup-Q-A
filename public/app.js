@@ -196,7 +196,7 @@ function home() {
   // Front door for visitors: join with a code, try the demo, open source, get a space
   function landing() {
     const code = h('input', { type: 'text', 'data-keep': 'lcode', placeholder: t('home.codePh'), maxlength: 5, 'aria-label': t('home.codeLabel'), autocapitalize: 'characters', autocomplete: 'off' });
-    const demo = INFO.demoUrl;
+    const demos = INFO.demos || [];
     const requestHref = `mailto:info@orbii.tech?subject=${encodeURIComponent(t('land.mailSubject'))}&body=${encodeURIComponent(t('land.mailBody'))}`;
     const card = (icon, title, text, actions) => h('article', { class: 'land-card' }, h('div', { class: 'land-ic', 'aria-hidden': 'true' }, icon), h('h3', {}, title), h('p', {}, text), h('div', { class: 'land-act' }, actions));
     return h('section', { class: 'landing' },
@@ -206,9 +206,9 @@ function home() {
           code, h('button', { class: 'btn primary' }, t('land.join'))),
         h('ul', { class: 'land-feats' }, ['💬 ' + t('land.f1'), '📊 ' + t('land.f2'), '📈 ' + t('land.f3'), '🗓 ' + t('land.f4')].map(x => h('li', {}, x)))),
       h('div', { class: 'land-cards' },
-        demo && card('🎭', t('land.demoT'), t('land.demoP'), [
-          h('a', { class: 'btn primary small', href: demo + '/host' }, '🎛 ' + t('land.demoHost')),
-          h('a', { class: 'btn small', href: demo }, '👥 ' + t('land.demoGuest')),
+        demos.length > 0 && card('🎭', t('land.demoT'), t('land.demoP'), [
+          demos.map(dm => h('div', { class: 'land-demo' }, h('b', {}, dm.title),
+            h('div', { class: 'land-act' }, h('a', { class: 'btn primary small', href: dm.url + '/host' }, '🎛 ' + t('land.demoHost')), h('a', { class: 'btn small', href: dm.url }, '👥 ' + t('land.demoGuest'))))),
           h('div', { class: 'muted land-pw' }, t('land.demoPw'), ' ', h('code', {}, 'demo20272028'))]),
         card('⭐', t('land.ossT'), t('land.ossP'), [
           h('a', { class: 'btn small', href: 'https://github.com/pejmang/Meetup-Q-A', target: '_blank', rel: 'noopener' }, t('land.ossBtn')),
@@ -280,13 +280,13 @@ function home() {
       h('div', { class: 'muted' }, t('create.hostPwHint')), hostPwIn,
       h('label', { class: 'row' }, mod, t('create.moderate')), h('button', { class: 'btn primary' }, t('create.submit')),
       h('div', { class: 'demo-row' }, h('span', { class: 'muted' }, '🎭 ' + t('demo.create')),
-        [['en', 1], ['fr', 1], ['en', 3]].map(([l, days]) => h('button', { type: 'button', class: 'btn small', onclick: async () => {
+        [['en', 1], ['fr', 1], ['en', 3], ['en', 1, 'townhall']].map(([l, days, scenario]) => h('button', { type: 'button', class: 'btn small', onclick: async () => {
           const pw = st.newPw.trim();
-          const r = await api('/events/demo', { lang: l, hostPassword: pw, days });
+          const r = await api('/events/demo', { lang: l, hostPassword: pw, days, scenario });
           safe('key:' + r.code, r.hostKey); st.newPw = genPw();
           refresh();
           createdModal({ code: r.code, hostKey: r.hostKey, hostPassword: pw, title: t('demo.modalTitle'), demo: true });
-        } }, (l === 'en' ? '🇬🇧 English' : '🇫🇷 Français') + (days > 1 ? ' · ' + t('demo.days', { n: days }) : '')))));
+        } }, scenario === 'townhall' ? '🏢 Townhall · 1,200' : (l === 'en' ? '🇬🇧 English' : '🇫🇷 Français') + (days > 1 ? ' · ' + t('demo.days', { n: days }) : '')))));
 
     document.body.classList.toggle('admin-mode', st.admin);
     $app.replaceChildren(...[st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin'))].filter(Boolean), h('div', { class: 'wrap narrow' }, top,
@@ -534,7 +534,7 @@ function sv(tag, attrs = {}, ...kids) {
   for (const k of kids.flat(Infinity)) if (k != null && k !== false) el.append(k.nodeType ? k : document.createTextNode(k));
   return el;
 }
-const niceMax = v => { if (v <= 4) return 4; const p = Math.pow(10, Math.floor(Math.log10(v))); const n = v / p; return (n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; };
+const niceMax = v => { if (v <= 4) return 4; const p = Math.pow(10, Math.floor(Math.log10(v))); const n = v / p; return [1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(x => n <= x) * p; };   // 1,152 → 1,200 (not 2,000)
 
 function activityKpis(s) {
   const eng = s.participants ? Math.round(100 * s.activeUsers / s.participants) : 0;

@@ -13,7 +13,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
-const { buildDemo } = require('./demo');
+const { buildDemo, buildTownhall } = require('./demo');
+const buildScenario = cfg => (cfg.scenario === 'townhall' ? buildTownhall : buildDemo)(cfg);
 const { verifyGoogleIdToken, isProEmail, FREE_DOMAINS } = require('./register');
 
 // ---------- Configuration ----------
@@ -32,7 +33,9 @@ const BACKUP_KEEP = Number(process.env.BACKUP_KEEP) || 14;                 // da
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';                // enables self-service registration
 const MAX_SPACES_PER_EMAIL = Number(process.env.MAX_SPACES_PER_EMAIL) || 3;  // active (not ended) spaces per organiser
 const TERMS_VERSION = '2026-11-24';
-const PUBLIC_DEMO_URL = process.env.PUBLIC_DEMO_URL || '';                // demo shown on the home page (e.g. https://…/e/K4ARN)
+// Demos shown on the home page: PUBLIC_DEMOS="Title|https://…/e/CODE;Title|https://…/e/CODE" (or a single PUBLIC_DEMO_URL)
+const PUBLIC_DEMOS = String(process.env.PUBLIC_DEMOS || '').split(';').map(x => x.split('|').map(y => y.trim())).filter(([t, u]) => t && /^https?:\/\//.test(u || '')).map(([title, url]) => ({ title, url }));
+if (!PUBLIC_DEMOS.length && process.env.PUBLIC_DEMO_URL) PUBLIC_DEMOS.push({ title: 'Demo', url: process.env.PUBLIC_DEMO_URL });
 const DATA_DIR = process.env.DATA_DIR || __dirname;
 const DATA_FILE = path.join(DATA_DIR, 'data.json');
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
@@ -380,7 +383,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const ip = clientIp(req);
       if (req.method === 'POST' && limited('ip:' + ip, IP_LIMIT)) return json(res, 429, { error: 'err.rate' });
-      if (req.method === 'GET' && parts[1] === 'info') return json(res, 200, { lan: lanUrls(), googleClientId: GOOGLE_CLIENT_ID || null, termsVersion: TERMS_VERSION, maxSpaces: MAX_SPACES_PER_EMAIL, demoUrl: PUBLIC_DEMO_URL || null, freeDomains: GOOGLE_CLIENT_ID ? FREE_DOMAINS : [] });
+      if (req.method === 'GET' && parts[1] === 'info') return json(res, 200, { lan: lanUrls(), googleClientId: GOOGLE_CLIENT_ID || null, termsVersion: TERMS_VERSION, maxSpaces: MAX_SPACES_PER_EMAIL, demos: PUBLIC_DEMOS, freeDomains: GOOGLE_CLIENT_ID ? FREE_DOMAINS : [] });
       // Self-service registration: Google sign-in (verified server-side), professional e-mail, terms accepted
       if (req.method === 'POST' && parts[1] === 'register') {
         if (limited('reg:' + ip, LOGIN_LIMIT)) return json(res, 429, { error: 'err.rate' });
@@ -439,8 +442,8 @@ const server = http.createServer(async (req, res) => {
         if (hostPassword.length < 4 || hostPassword.length > 64) return json(res, 400, { error: 'err.hostPw' });
         const code = newCode();
         const hostKey = crypto.randomBytes(12).toString('hex');
-        const demoCfg = { lang: b.lang === 'fr' ? 'fr' : 'en', days: Math.min(5, Math.max(1, Number(b.days) || 1)) };
-        events[code] = { ...buildDemo({ ...demoCfg, code, hostKey, hostPass: hashPw(hostPassword), uid }), demoCfg };
+        const demoCfg = { lang: b.lang === 'fr' ? 'fr' : 'en', days: Math.min(5, Math.max(1, Number(b.days) || 1)), scenario: b.scenario === 'townhall' ? 'townhall' : 'meetup' };
+        events[code] = { ...buildScenario({ ...demoCfg, code, hostKey, hostPass: hashPw(hostPassword), uid }), demoCfg };
         save();
         return json(res, 200, { code, hostKey });
       }
@@ -747,7 +750,7 @@ const server = http.createServer(async (req, res) => {
 function resetDemo(code) {
   const ev = events[code]; if (!isPublicDemo(ev)) return;
   const demoCfg = ev.demoCfg || { lang: 'en', days: 1 };
-  events[code] = { ...buildDemo({ ...demoCfg, code, hostKey: ev.hostKey, hostPass: ev.hostPass, uid }), demoCfg, demoResetAt: Date.now() + DEMO_RESET_MIN * MIN };
+  events[code] = { ...buildScenario({ ...demoCfg, code, hostKey: ev.hostKey, hostPass: ev.hostPass, uid }), demoCfg, demoResetAt: Date.now() + DEMO_RESET_MIN * MIN };
   save(); broadcast(code);
 }
 for (const ev of Object.values(events)) if (isPublicDemo(ev)) {

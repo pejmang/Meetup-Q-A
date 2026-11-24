@@ -11,7 +11,7 @@ window.I18N = {
   en: {
     'land.tagline': 'Live Q&A, polls, NPS and audience analytics for your meetups and events.', 'land.join': 'Join',
     'land.f1': 'Live Q&A with upvotes', 'land.f2': '6 poll formats & NPS', 'land.f3': 'Live audience analytics', 'land.f4': 'Agenda & sessions',
-    'land.demoT': 'Try the live demo', 'land.demoP': 'A simulated 3-day meetup with agenda, questions, polls and analytics. Reset every 30 minutes — try everything.',
+    'land.demoT': 'Try the live demo', 'land.demoP': 'Simulated events with agenda, questions, polls and live analytics — try everything.',
     'land.demoHost': 'Host view', 'land.demoGuest': 'Participant view', 'land.demoPw': 'Host password:',
     'land.ossT': 'Open source', 'land.ossP': 'Zero-dependency Node.js app you can self-host. Free for noncommercial use.', 'land.ossBtn': 'View on GitHub',
     'land.spaceT': 'Get your event space', 'land.spaceP': 'Create a space for your meetup in a minute, with your professional e-mail.',
@@ -182,7 +182,7 @@ window.I18N = {
   fr: {
     'land.tagline': 'Questions-réponses, sondages, NPS et analytics d\'audience en direct pour vos meetups et événements.', 'land.join': 'Rejoindre',
     'land.f1': 'Q&A en direct avec votes', 'land.f2': '6 formats de sondage & NPS', 'land.f3': 'Analytics d\'audience en direct', 'land.f4': 'Agenda & sessions',
-    'land.demoT': 'Tester la démo', 'land.demoP': 'Un meetup simulé de 3 jours avec agenda, questions, sondages et analytics. Remise à zéro toutes les 30 minutes — testez tout.',
+    'land.demoT': 'Tester la démo', 'land.demoP': 'Des événements simulés avec agenda, questions, sondages et analytics en direct — testez tout.',
     'land.demoHost': 'Vue animateur', 'land.demoGuest': 'Vue participant', 'land.demoPw': 'Mot de passe animateur :',
     'land.ossT': 'Open source', 'land.ossP': 'Application Node.js sans dépendance, à héberger vous-même. Gratuite pour un usage non commercial.', 'land.ossBtn': 'Voir sur GitHub',
     'land.spaceT': 'Obtenir votre espace', 'land.spaceP': 'Créez l\'espace de votre meetup en une minute, avec votre e-mail professionnel.',

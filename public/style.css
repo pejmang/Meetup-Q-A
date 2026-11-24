@@ -590,3 +590,6 @@ body.screen .react { background: color-mix(in srgb, #fff 12%, var(--bg)); }
 .land-pw code { font-weight: 700; color: var(--ink); }
 @media (max-width: 760px) { .land-cards { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .land-card { transition: none; } }
+.land-demo { flex-basis: 100%; display: grid; gap: 4px; padding: 8px 0; border-top: 1px dashed var(--line); }
+.land-demo:first-child { border-top: 0; padding-top: 0; }
+.land-demo b { font-size: .9rem; }
