@@ -16,7 +16,8 @@ const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now()
 const cid = safe('cid') || (() => { const v = uuid(); safe('cid', v); return v; })();
 
 // ---------- i18n ----------
-let LANG = safe('lang') || ((navigator.language || 'en').toLowerCase().startsWith('fr') ? 'fr' : 'en');
+// on a website page the address gives the language; elsewhere the saved choice, then the browser
+let LANG = document.querySelector('#app > .mk')?.dataset.lang || safe('lang') || ((navigator.language || 'en').toLowerCase().startsWith('fr') ? 'fr' : 'en');
 function t(key, vars) {
   let s = (I18N[LANG] && I18N[LANG][key]) ?? I18N.en[key] ?? key;
   if (vars) for (const [k, v] of Object.entries(vars)) s = s.split('{' + k + '}').join(v);
@@ -134,7 +135,6 @@ let stream = null;
 const appPath = () => location.pathname.startsWith(BASE) ? location.pathname.slice(BASE.length) || '/' : location.pathname;
 function route() {
   if (stream) { stream.close(); stream = null; }
-  if (appPath() !== '/') Site.leave();
   document.body.classList.remove('screen', 'report', 'host-mode', 'admin-mode');
   const p = appPath().split('/').filter(Boolean);
   if (p[0] === 'e' && p[1]) {
@@ -154,12 +154,12 @@ const link = (path, label, attrs = {}) => h('a', { href: BASE + path, onclick: e
 // ---------- Home ----------
 let homeTimer = null, homeKey = null;
 function home() {
-  document.title = 'Meetup Q&A';
   clearInterval(homeTimer);
   const hostParam = new URLSearchParams(location.search).get('host');
   const st = { events: [], admin: false, login: !!hostParam, loginMode: 'host', hostCode: (hostParam || '').toUpperCase(), loaded: false, newTitle: '', newPw: genPw(), newMod: false, newCompany: '', find: '' };
   const token = () => safe('adminToken') || '';
-  const onHome = () => appPath() === '/';
+  const homePath = appPath();   // '/' or one of the website pages
+  const onHome = () => appPath() === homePath;
 
   async function refresh() {
     try {
@@ -302,14 +302,17 @@ function home() {
         } }, scenario === 'townhall' ? '🏢 Townhall · 1,200' : (l === 'en' ? '🇬🇧 English' : '🇫🇷 Français') + (days > 1 ? ' · ' + t('demo.days', { n: days }) : '')))));
 
     document.body.classList.toggle('admin-mode', st.admin);
-    // Visitors see the public website; the admin keeps the management screen
+    // Visitors see the public website sent by the server; the admin gets the management screen
     if (!st.admin && !(token() && !st.loaded)) {
       const site = Site.render({ findSpace, signIn: () => { st.login = true; draw(); document.querySelector(st.loginMode === 'host' && !st.hostCode ? '#lg-code' : '#lg-pw')?.focus(); } });
-      // the site node stays in place (typing and demo are kept); only the sign-in drawer is redrawn
-      if (site.parentNode === $app) { while (site.nextSibling) site.nextSibling.remove(); } else $app.replaceChildren(site);
+      // coming back from an application screen (or signing out): load the page again
+      if (!site) return location.replace(BASE + (Site.lang || LANG !== 'en' ? (Site.lang === 'en' ? '/en' : '/') : '/en') + location.search);
+      // the page stays in place (typing and demo are kept); only the sign-in drawer is redrawn
+      while (site.nextSibling) site.nextSibling.remove();
       if (login) $app.append(login);
       return Site.sync();
     }
+    document.title = 'Meetup Q&A';
     $app.replaceChildren(...[st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin'))].filter(Boolean), h('div', { class: `wrap ${st.admin ? 'narrow' : 'home-wide'}` }, top,
       h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline'))),
       pwCard, create,

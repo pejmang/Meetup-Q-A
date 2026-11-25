@@ -1,0 +1,38 @@
+<div class="mk-pagehead"><div class="mk-wrap"><div class="mk-eyebrow">Interactive demo</div>
+<h1>Your turn.</h1>
+<p>Ask a question, vote and see how the organiser can lead the conversation. Both views stay in sync in your browser.</p>
+</div>
+</div>
+<div class="mk-section" style="padding-top:32px"><div class="mk-wrap">{{liveDemos}}<div class="mk-demoShell"><section class="mk-demoPanel"><header><h3>Participant view</h3>
+<span class="mk-live">DEMO</span></header>
+<div class="mk-demoBody"><div class="mk-tabs"><button class="mk-tab mk-active" data-tab="questions">Questions</button><button class="mk-tab" data-tab="poll">Poll</button></div>
+<div id="questionsTab"><h3 style="margin:0 0 12px;font-size:19px">Town Hall · Cap 2027</h3>
+<form id="questionForm"><label for="question" style="font-size:13px;font-weight:700">Your anonymous question</label><textarea id="question" maxlength="220" placeholder="What would you like to ask?" required=""></textarea><button class="mk-btn mk-dark" style="margin-top:8px" type="submit">Send my question</button></form>
+<p style="font-weight:700;font-size:13px;margin:22px 0 8px">Audience questions</p>
+<div aria-live="polite" id="questionList"></div>
+</div>
+<div hidden="" id="pollTab"><h3>Which topic would you like to explore?</h3>
+<div id="pollOptions"></div>
+<div class="mk-notice" id="pollNote">Select an answer.</div>
+</div>
+</div>
+</section>
+<section class="mk-demoPanel"><header><h3>Organiser view</h3>
+<span class="mk-live">DEMO</span></header>
+<div class="mk-demoBody"><div class="mk-metrics"><div class="mk-metric"><b id="nQuestions">3</b><span>Questions</span></div>
+<div class="mk-metric"><b id="nVotes">91</b><span>Q&amp;A votes</span></div>
+<div class="mk-metric"><b id="nAnswered">0</b><span>Answered</span></div>
+</div>
+<h3 style="font-size:17px;margin:15px 0 10px">Manage questions</h3>
+<div id="adminList"></div>
+<div aria-live="polite" class="mk-panel" style="padding:20px;margin-top:18px"><span class="mk-live">BIG SCREEN</span><h3 id="projected" style="font-size:21px;margin:16px 0 5px">Select a question to show.</h3>
+<p id="projectedMeta" style="margin:0;font-size:12px">Presentation screen</p>
+</div>
+<div style="margin-top:20px"><h3 style="font-size:17px;margin:0 0 5px">Poll results</h3>
+<div id="pollResults"></div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</div>

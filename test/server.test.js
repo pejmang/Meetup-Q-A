@@ -418,3 +418,30 @@ test('base path: index is served with the base injected', async () => {
   const y = new Date().getFullYear();
   assert.ok(html.includes(`content="© ${y > 2026 ? `2026–${y}` : '2026'} ORBii SAS"`), 'copyright years follow the current year');
 });
+
+test('website: complete HTML per page and language, readable without JavaScript', async () => {
+  const at = p => fetch(`http://127.0.0.1:${PORT}/v2.0${p}`, { redirect: 'manual' });
+  for (const [p, lang, h1] of [['/', 'fr', 'Engagez votre audience.'], ['/fonctionnalites', 'fr', 'De la préparation au suivi'], ['/cas-usage', 'fr', 'Chaque audience'], ['/demo', 'fr', 'À vous de jouer.'],
+    ['/open-source', 'fr', 'Open by design.'], ['/offres', 'fr', 'Votre événement. Votre choix.'], ['/en/open-source', 'en', 'Open by design.'], ['/en/offers', 'en', 'Your event. Your choice.'],
+    ['/en', 'en', 'Engage your audience.'], ['/en/features', 'en', 'From preparation to follow-up'], ['/en/use-cases', 'en', 'Every audience'], ['/en/demo', 'en', 'Your turn.']]) {
+    const r = await at(p), html = await r.text();
+    assert.equal(r.status, 200, p);
+    assert.ok(html.includes(`<html lang="${lang}">`), p + ' language');
+    assert.equal(html.match(/<h1[ >]/g).length, 1, p + ' has one h1');
+    assert.ok(html.includes(h1), p + ' content');
+    assert.ok(html.includes(`<link rel="canonical" href="http://127.0.0.1:${PORT}/v2.0${p}">`), p + ' canonical');
+    assert.doesNotMatch(html, /\{\{/, p + ' has no unfilled placeholder');
+    assert.ok(!html.includes('href="https://interact.orbii.tech'), p + ' never links to another deployment');
+    JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)[1]);
+    assert.equal(r.headers.get('x-robots-tag'), null, p + ' is indexable');
+  }
+  const slash = await at('/en/');
+  assert.equal(slash.status, 301);
+  assert.equal(slash.headers.get('location'), '/v2.0/en');
+  assert.match(await (await at('/robots.txt')).text(), /Sitemap: .*\/v2\.0\/sitemap\.xml/);
+  assert.equal((await (await at('/sitemap.xml')).text()).match(/<loc>/g).length, 12);
+  const llms = await at('/llms.txt');
+  assert.match(llms.headers.get('content-type'), /text\/plain/);
+  assert.match(await llms.text(), /# ORBii Interact/);
+  assert.equal((await at('/e/ABCDE')).headers.get('x-robots-tag'), 'noindex', 'event screens are not indexed');
+});

@@ -21,6 +21,8 @@ services:
       REQUIRE_PRO_EMAIL: ${REQUIRE_PRO_EMAIL:-}
       PUBLIC_DEMO_URL: ${PUBLIC_DEMO_URL:-}
       PUBLIC_DEMOS: ${PUBLIC_DEMOS:-}
+      SITE_URL: ${SITE_URL:-}
+      SITE_NOINDEX: ${SITE_NOINDEX:-}
     volumes:
       - qa-data:/data
 volumes:
