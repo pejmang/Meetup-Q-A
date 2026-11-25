@@ -17,6 +17,7 @@ ORBii Interact (the code repository is named Meetup Q&A) has two views: particip
 - [Demo]({{url}}/en/demo)
 - [Community & Open Source]({{url}}/en/open-source)
 - [Plans & deployment]({{url}}/en/offers)
+- [Commercial licence agreement, in French]({{url}}/en/commercial-license)
 
 ## Pages (français)
 - [Accueil]({{url}}/)
@@ -25,6 +26,7 @@ ORBii Interact (the code repository is named Meetup Q&A) has two views: particip
 - [Démo]({{url}}/demo)
 - [Community & Open Source]({{url}}/open-source)
 - [Offres & déploiement]({{url}}/offres)
+- [Contrat de licence commerciale]({{url}}/licence-commerciale)
 
 ## Licence and contact
 - Source code: https://github.com/pejmang/Meetup-Q-A (open source under the GNU AGPL v3.0 only; commercial use is allowed within its terms; dual licensing: a commercial licence can be requested from ORBii SAS for proprietary integrations, unshared modifications, OEM redistribution or other terms).

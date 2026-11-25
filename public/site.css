@@ -368,3 +368,14 @@ html:has(.mk){scroll-behavior:smooth}
 @media(max-width:1200px){.mk .mk-navlinks{display:none!important;position:absolute;top:100%;left:0;right:0;padding:20px;background:var(--cream);border-bottom:1px solid var(--line);flex-direction:column;align-items:flex-start}.mk .mk-navlinks.mk-open{display:flex!important}.mk .mk-nav .mk-actions .mk-menu{display:inline-flex!important}}
 @media(max-width:520px){.mk .mk-nav .mk-actions .mk-primary{display:none}}
 @media(max-width:480px){:where(.mk) .mk-wrap{padding:0 14px}:where(.mk) .mk-nav .mk-wrap{gap:6px}:where(.mk) .mk-logo,:where(.mk) .mk-logo small{font-size:17px}:where(.mk) .mk-mark{display:none}:where(.mk) .mk-nav .mk-logo small{display:none}:where(.mk) .mk-actions .mk-btn.mk-menu{padding:8px 10px}:where(.mk) .mk-actions{gap:5px;flex-wrap:nowrap}:where(.mk) .mk-actions .mk-btn{padding:8px 9px;font-size:12px}:where(.mk) .mk-actions .mk-primary span{display:none}}
+/* Legal text (commercial licence) */
+:where(.mk) .mk-legal{max-width:820px;margin:auto;line-height:1.65;font-size:15px;overflow-wrap:break-word}
+:where(.mk) .mk-section .mk-legal h2{font-size:clamp(22px,3vw,28px);line-height:1.25;letter-spacing:-.5px;margin:44px 0 12px}
+:where(.mk) .mk-section .mk-legal h2:first-child{margin-top:0}
+:where(.mk) .mk-legal h3{font-size:17px;margin:26px 0 8px;scroll-margin-top:90px}
+:where(.mk) .mk-legal p{margin:0 0 10px}
+:where(.mk) .mk-legal ul,:where(.mk) .mk-legal ol{margin:0 0 12px;padding-left:22px}
+:where(.mk) .mk-legal a{text-decoration:underline}
+:where(.mk) .mk-tablewrap{overflow-x:auto}
+:where(.mk) .mk-legal table{border-collapse:collapse;width:100%;min-width:460px;font-size:13px}
+:where(.mk) .mk-legal th,:where(.mk) .mk-legal td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}

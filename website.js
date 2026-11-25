@@ -14,10 +14,10 @@ const fs = require('fs');
 const path = require('path');
 const DIR = path.join(__dirname, 'website');
 const REPO = 'https://github.com/pejmang/Meetup-Q-A';
-const NAV = { home: 'accueil', features: 'fonctionnalites', 'use-cases': 'cas-usage', demo: 'demo', 'open-source': 'open-source', offers: 'offres' };
+const NAV = { home: 'accueil', features: 'fonctionnalites', 'use-cases': 'cas-usage', demo: 'demo', 'open-source': 'open-source', offers: 'offres', license: 'licence' };
 const ROUTES = {
-  fr: { home: '/', features: '/fonctionnalites', 'use-cases': '/cas-usage', demo: '/demo', 'open-source': '/open-source', offers: '/offres' },
-  en: { home: '/en', features: '/en/features', 'use-cases': '/en/use-cases', demo: '/en/demo', 'open-source': '/en/open-source', offers: '/en/offers' }
+  fr: { home: '/', features: '/fonctionnalites', 'use-cases': '/cas-usage', demo: '/demo', 'open-source': '/open-source', offers: '/offres', license: '/licence-commerciale' },
+  en: { home: '/en', features: '/en/features', 'use-cases': '/en/use-cases', demo: '/en/demo', 'open-source': '/en/open-source', offers: '/en/offers', license: '/en/commercial-license' }
 };
 const BY_PATH = new Map(Object.entries(ROUTES).flatMap(([lang, pages]) => Object.entries(pages).map(([page, p]) => [p, { lang, page }])));
 
@@ -28,7 +28,8 @@ const META = {
     'use-cases': ['Cas d’usage : town halls, meetups, conférences — ORBii Interact', 'Town halls, communication interne, conférences, ateliers, meetups et formations : comment engager vos participants avec ORBii Interact.'],
     demo: ['Démo interactive — ORBii Interact', 'Essayez ORBii Interact : démo en ligne avec agenda, questions, sondages et statistiques, en vue animateur ou participant.'],
     'open-source': ['Community & Open Source — ORBii Interact', 'Le code d’ORBii Interact est open source sur GitHub (licence AGPL-3.0) : consultation, auto-hébergement et projet d’édition communautaire.'],
-    offers: ['Offres & déploiement — ORBii Interact', 'Les parcours ORBii Interact : produit en ligne, auto-hébergement, formules commerciales en préparation et besoins des entreprises.']
+    offers: ['Offres & déploiement — ORBii Interact', 'Les parcours ORBii Interact : produit en ligne, auto-hébergement, formules commerciales en préparation et besoins des entreprises.'],
+    license: ['Contrat de licence commerciale — ORBii Interact', 'Contrat de licence commerciale ORBii Interact, l’alternative à l’AGPL-3.0 : droits concédés, restrictions, durée, garanties, responsabilité et résiliation.']
   },
   en: {
     home: ['ORBii Interact — Engage your audience. Unlock collective intelligence.', 'Live Q&A, voting, polls, moderation and analytics for meetings, conferences and events: prepare, run and follow up on discussions with ORBii Interact.'],
@@ -36,7 +37,8 @@ const META = {
     'use-cases': ['Use cases: town halls, meetups, conferences — ORBii Interact', 'Town halls, internal communications, conferences, workshops, meetups and training: how to engage participants with ORBii Interact.'],
     demo: ['Interactive demo — ORBii Interact', 'Try ORBii Interact: a live demo with agenda, questions, polls and analytics, as host or participant.'],
     'open-source': ['Community & Open Source — ORBii Interact', 'ORBii Interact is open source on GitHub (AGPL-3.0 licence): read the code, self-host it, and follow the community edition project.'],
-    offers: ['Plans & deployment — ORBii Interact', 'ORBii Interact paths: online product, self-hosting, commercial plans in preparation and company needs.']
+    offers: ['Plans & deployment — ORBii Interact', 'ORBii Interact paths: online product, self-hosting, commercial plans in preparation and company needs.'],
+    license: ['Commercial licence agreement — ORBii Interact', 'ORBii Interact commercial licence agreement, the alternative to the AGPL-3.0. The French version is authoritative.']
   }
 };
 const TEXT = {
@@ -88,7 +90,8 @@ function page(req, ctx, lang, name) {
     otherUrl: B + ROUTES[other][name], otherLang: other, otherLabel: other.toUpperCase(),
     createHref: ctx.googleClientId ? B + '/register' : `mailto:info@orbii.tech?subject=${encodeURIComponent(x.mailSubject)}&amp;body=${encodeURIComponent(x.mailBody)}`,
     mySpaces: ctx.googleClientId ? `<a href="${B}/my">${x.my}</a>` : '',
-    demoCode: demoCode(lang, ctx), liveDemos: liveDemos(lang, ctx)
+    demoCode: demoCode(lang, ctx), liveDemos: liveDemos(lang, ctx),
+    contract: read('contract-fr.html') // French only: it is the authoritative version
   };
   const content = fill(read(`${lang}/${name}.html`), vars);
   const body = fill(read(`${lang}/layout.html`), { ...vars, content })

@@ -424,7 +424,8 @@ test('website: complete HTML per page and language, readable without JavaScript'
   const at = p => fetch(`http://127.0.0.1:${PORT}/v2.0${p}`, { redirect: 'manual' });
   for (const [p, lang, h1] of [['/', 'fr', 'Engagez votre audience.'], ['/fonctionnalites', 'fr', 'De la préparation au suivi'], ['/cas-usage', 'fr', 'Chaque audience'], ['/demo', 'fr', 'À vous de jouer.'],
     ['/open-source', 'fr', 'Open by design.'], ['/offres', 'fr', 'Votre événement. Votre choix.'], ['/en/open-source', 'en', 'Open by design.'], ['/en/offers', 'en', 'Your event. Your choice.'],
-    ['/en', 'en', 'Engage your audience.'], ['/en/features', 'en', 'From preparation to follow-up'], ['/en/use-cases', 'en', 'Every audience'], ['/en/demo', 'en', 'Your turn.']]) {
+    ['/en', 'en', 'Engage your audience.'], ['/en/features', 'en', 'From preparation to follow-up'], ['/en/use-cases', 'en', 'Every audience'], ['/en/demo', 'en', 'Your turn.'],
+    ['/licence-commerciale', 'fr', 'Contrat de licence commerciale'], ['/en/commercial-license', 'en', 'Commercial licence agreement']]) {
     const r = await at(p), html = await r.text();
     assert.equal(r.status, 200, p);
     assert.ok(html.includes(`<html lang="${lang}">`), p + ' language');
@@ -432,15 +433,19 @@ test('website: complete HTML per page and language, readable without JavaScript'
     assert.ok(html.includes(h1), p + ' content');
     assert.ok(html.includes(`<link rel="canonical" href="http://127.0.0.1:${PORT}/v2.0${p}">`), p + ' canonical');
     assert.doesNotMatch(html, /\{\{/, p + ' has no unfilled placeholder');
-    assert.ok(!html.includes('href="https://interact.orbii.tech'), p + ' never links to another deployment');
+    // the contract quotes the official address (article 25): its text is left unchanged
+    assert.ok(!html.replace(/<article class="mk-legal"[\s\S]*?<\/article>/, '').includes('href="https://interact.orbii.tech'), p + ' never links to another deployment');
     JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)[1]);
     assert.equal(r.headers.get('x-robots-tag'), null, p + ' is indexable');
   }
+  const contract = await (await at('/licence-commerciale')).text();
+  assert.equal(contract.match(/id="article-\d+"/g).length, 25, 'the 25 articles of the commercial licence');
+  assert.doesNotMatch(contract, /Note de révision|Version 1\.0/, 'the internal revision note is never published');
   const slash = await at('/en/');
   assert.equal(slash.status, 301);
   assert.equal(slash.headers.get('location'), '/v2.0/en');
   assert.match(await (await at('/robots.txt')).text(), /Sitemap: .*\/v2\.0\/sitemap\.xml/);
-  assert.equal((await (await at('/sitemap.xml')).text()).match(/<loc>/g).length, 12);
+  assert.equal((await (await at('/sitemap.xml')).text()).match(/<loc>/g).length, 14);
   const llms = await at('/llms.txt');
   assert.match(llms.headers.get('content-type'), /text\/plain/);
   assert.match(await llms.text(), /# ORBii Interact/);
