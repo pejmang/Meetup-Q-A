@@ -249,4 +249,4 @@ html:has(.mk){scroll-behavior:smooth}
 :where(.mk) .mk-livedemos p{margin:0 0 14px;color:var(--muted)}
 :where(.mk) .mk-livedemo{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--line)}
 @media(max-width:1000px){:where(.mk) .mk-actions .mk-ghost{display:inline-flex}}
-@media(max-width:480px){:where(.mk) .mk-wrap{padding:0 14px}:where(.mk) .mk-nav .mk-wrap{gap:6px}:where(.mk) .mk-logo,:where(.mk) .mk-logo small{font-size:17px}:where(.mk) .mk-mark{display:none}:where(.mk) .mk-actions{gap:5px;flex-wrap:nowrap}:where(.mk) .mk-actions .mk-btn{padding:8px 9px;font-size:12px}:where(.mk) .mk-actions .mk-primary span{display:none}}
+@media(max-width:480px){:where(.mk) .mk-wrap{padding:0 14px}:where(.mk) .mk-nav .mk-wrap{gap:6px}:where(.mk) .mk-logo,:where(.mk) .mk-logo small{font-size:17px}:where(.mk) .mk-mark{display:none}:where(.mk) .mk-nav .mk-logo small{display:none}:where(.mk) .mk-actions .mk-btn.mk-menu{padding:8px 10px}:where(.mk) .mk-actions{gap:5px;flex-wrap:nowrap}:where(.mk) .mk-actions .mk-btn{padding:8px 9px;font-size:12px}:where(.mk) .mk-actions .mk-primary span{display:none}}
