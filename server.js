@@ -12,7 +12,6 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const website = require('./website');
 const crypto = require('crypto');
 const os = require('os');
 const { buildDemo, buildTownhall } = require('./demo');
@@ -763,9 +762,6 @@ const server = http.createServer(async (req, res) => {
       return json(res, 400, { error: 'err.invalid' });
     }
   }
-
-  // Public website: complete pages for visitors, search engines and AI assistants
-  if (website.handle(req, res, pathname, url.search, { base: BASE, siteUrl: process.env.SITE_URL || '', noindex: process.env.SITE_NOINDEX === '1', demos: PUBLIC_DEMOS, googleClientId: GOOGLE_CLIENT_ID || '', years: copyrightYears(), hasEvent: c => Object.prototype.hasOwnProperty.call(events, c) })) return;
 
   // Static files (SPA: everything else returns index.html)
   const rel = path.normalize(pathname).replace(/^(\.\.[/\\])+/, '');

@@ -17,8 +17,8 @@ const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now()
 const cid = safe('cid') || (() => { const v = uuid(); safe('cid', v); return v; })();
 
 // ---------- i18n ----------
-// on a website page the address gives the language; elsewhere the saved choice, then the browser
-let LANG = document.querySelector('#app > .mk')?.dataset.lang || safe('lang') || ((navigator.language || 'en').toLowerCase().startsWith('fr') ? 'fr' : 'en');
+// the saved choice, then the browser
+let LANG = safe('lang') || ((navigator.language || 'en').toLowerCase().startsWith('fr') ? 'fr' : 'en');
 function t(key, vars) {
   let s = (I18N[LANG] && I18N[LANG][key]) ?? I18N.en[key] ?? key;
   if (vars) for (const [k, v] of Object.entries(vars)) s = s.split('{' + k + '}').join(v);
@@ -159,7 +159,7 @@ let homeTimer = null, homeKey = null;
 function home() {
   clearInterval(homeTimer);
   const hostParam = new URLSearchParams(location.search).get('host');
-  const st = { events: [], admin: false, login: !!hostParam, loginMode: 'host', hostCode: (hostParam || '').toUpperCase(), loaded: false, newTitle: '', newPw: genPw(), newMod: false, newCompany: '', find: '' };
+  const st = { events: [], admin: false, login: !!hostParam, loginMode: 'host', hostCode: (hostParam || '').toUpperCase(), loaded: false, newTitle: '', newPw: genPw(), newMod: false, newCompany: '', find: '', joinCode: '' };
   const token = () => safe('adminToken') || '';
   const homePath = appPath();   // '/' or one of the website pages
   const onHome = () => appPath() === homePath;
@@ -219,6 +219,31 @@ function home() {
     return h('section', { class: 'find' },
       h('div', { class: 'find-head' }, h('h2', {}, '🔎 ' + t('find.title')), h('span', { class: 'find-count' }, count())),
       search, rows());
+  }
+
+  // Front door for visitors: join with a code, find a space, try the demos, get the source, create a space
+  function landing() {
+    const code = h('input', { type: 'text', 'data-keep': 'lcode', placeholder: t('home.codePh'), maxlength: 5, 'aria-label': t('home.codeLabel'), autocapitalize: 'characters', autocomplete: 'off', value: st.joinCode, oninput: e => st.joinCode = e.target.value });
+    const demos = INFO.demos || [];
+    const card = (cls, icon, title, text, actions) => h('article', { class: `land-card ${cls}` }, h('div', { class: 'land-ic', 'aria-hidden': 'true' }, icon), h('h3', {}, title), h('p', {}, text), h('div', { class: 'land-act' }, actions));
+    return h('section', { class: 'landing' },
+      h('div', { class: 'land-hero' },
+        h('div', { class: 'land-copy' },
+          h('span', { class: 'land-kicker' }, '✨ ' + t('land.kicker')),
+          h('h1', {}, 'Meetup ', h('span', {}, 'Q&A')), h('p', { class: 'land-tag' }, t('land.tagline')),
+          h('form', { class: 'land-join', onsubmit: e => { e.preventDefault(); if (code.value.trim()) go('/e/' + code.value.trim().toUpperCase()); } },
+            code, h('button', { class: 'btn' }, t('land.join') + ' →')),
+          h('ul', { class: 'land-feats' }, ['💬 ' + t('land.f1'), '📊 ' + t('land.f2'), '📈 ' + t('land.f3'), '🗓 ' + t('land.f4')].map(x => h('li', {}, x)))),
+        findSpace()),
+      h('div', { class: 'land-cards' },
+        demos.length > 0 && card('c-demo', '🎭', t('land.demoT'), t('land.demoP'),
+          demos.map(dm => h('div', { class: 'land-demo' }, h('b', {}, dm.title),
+            h('div', { class: 'land-act' }, h('a', { class: 'btn primary small', href: dm.url + '/host' }, '🎛 ' + t('land.demoHost')), h('a', { class: 'btn small', href: dm.url }, '👥 ' + t('land.demoGuest')))))),
+        card('c-oss', '⭐', t('land.ossT'), t('land.ossP'), [
+          h('a', { class: 'btn small', href: 'https://github.com/pejmang/Meetup-Q-A', target: '_blank', rel: 'noopener' }, t('land.ossBtn')),
+          h('div', { class: 'muted' }, 'AGPL-3.0')]),
+        INFO.googleClientId && card('c-space', '✨', t('land.spaceT'), t('land.spaceP'),
+          [h('button', { class: 'btn primary small', onclick: () => go('/register') }, t('reg.cta')), link('/my', '🗂 ' + t('my.title'), { class: 'btn small' })])));
   }
 
   function draw() {
@@ -305,19 +330,9 @@ function home() {
         } }, scenario === 'townhall' ? '🏢 Townhall · 1,200' : (l === 'en' ? '🇬🇧 English' : '🇫🇷 Français') + (days > 1 ? ' · ' + t('demo.days', { n: days }) : '')))));
 
     document.body.classList.toggle('admin-mode', st.admin);
-    // Visitors see the public website sent by the server; the admin gets the management screen
-    if (!st.admin && !(token() && !st.loaded)) {
-      const site = Site.render({ findSpace, signIn: () => { st.login = true; draw(); document.querySelector(st.loginMode === 'host' && !st.hostCode ? '#lg-code' : '#lg-pw')?.focus(); } });
-      // coming back from an application screen (or signing out): load the page again
-      if (!site) return location.replace(BASE + (Site.lang || LANG !== 'en' ? (Site.lang === 'en' ? '/en' : '/') : '/en') + location.search);
-      // the page stays in place (typing and demo are kept); only the sign-in drawer is redrawn
-      while (site.nextSibling) site.nextSibling.remove();
-      if (login) $app.append(login);
-      return Site.sync();
-    }
     document.title = 'Meetup Q&A';
     $app.replaceChildren(...[st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin'))].filter(Boolean), h('div', { class: `wrap ${st.admin ? 'narrow' : 'home-wide'}` }, top,
-      h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline'))),
+      st.admin ? h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline'))) : landing(),
       pwCard, create,
       st.admin && h('h2', {}, t('home.live', { n: liveEv.length })),
       st.admin && (liveEv.length ? h('div', { class: 'stack' }, liveEv.map(eventCard)) : h('p', { class: 'empty' }, st.loaded ? t('home.noLive') : t('common.loading'))),
@@ -326,7 +341,7 @@ function home() {
       st.admin && done.length > 0 && h('div', {}, h('h2', {}, t('home.endedList', { n: done.length })), h('div', { class: 'stack' }, done.map(eventCard))), brandFooter()), ...(login ? [login] : []));
   }
   const onKey = e => { if (!onHome()) return document.removeEventListener('keydown', onKey); if (e.key === 'Escape' && st.login) { st.login = false; draw(); } };
-  document.removeEventListener('keydown', homeKey);   // home() runs again on each page of the website
+  document.removeEventListener('keydown', homeKey);   // home() may run again: keep a single listener
   document.addEventListener('keydown', homeKey = onKey);
   draw(); refresh(); infoReady.then(() => { if (onHome()) draw(); });
   if (st.login) setTimeout(() => document.querySelector(st.hostCode ? '#lg-pw' : '#lg-code')?.focus(), 80);

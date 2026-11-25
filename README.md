@@ -19,10 +19,6 @@ The demo data is simulated and may be reset at any time.
 
 Live Q&A and polls for meetups and events. Zero dependencies (Node ≥ 18), real-time via Server-Sent Events, data stored in a single JSON file.
 
-## Public website
-
-The home, features, use cases and demo pages (French and English) are complete HTML rendered by `website.js` from `website/{fr,en}/*.html`, so they can be read without JavaScript. The server also provides `robots.txt`, `sitemap.xml` and `llms.txt`. Settings: `SITE_URL` (public address, derived from the request when empty) and `SITE_NOINDEX=1` for test sites.
-
 ## Roles
 - **Participant**: sees live events, joins with a code or QR code, asks questions (named or anonymous), upvotes 👍, reacts with emojis, answers polls.
 - **Event host** (per-event password): manages *one* event — moderation, pin, mark answered, show a question on screen, polls, close questions, end the event.
