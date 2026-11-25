@@ -110,19 +110,24 @@ Put a reverse proxy in front (see `nginx.conf.example`). Important: `proxy_buffe
 - One vote per device (ID stored in the browser), not per person.
 - The QR code is generated in the browser via cdnjs (internet required).
 
-## License
+## Licensing
 
-Copyright © 2026 **ORBii SAS**.
+ORBii Interact is available under a dual licensing model.
 
-This program is free software, released under the **[GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.html)** only (`AGPL-3.0-only`, see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE)). It comes **without any warranty**. In short (the license text prevails):
+**Open source: GNU AGPL v3.0 only**
+You may use, modify and distribute ORBii Interact, including for commercial purposes, subject to the [license terms](LICENSE) (`AGPL-3.0-only`, see also [`NOTICE`](NOTICE)). In particular, if you modify it and let users interact with it over a network, you must offer them the source code of your version. It comes without any warranty.
 
-- ✅ **You may use, study, modify and share it for any purpose, including commercially.**
-- 🔁 If you distribute it, modified or not, you must do so under the same license, with the source code and the copyright notices.
-- 🌐 If you **modify it and let users interact with it over a network** (hosted or SaaS use), you must offer those users the source code of your version (section 13). Point the "source code" links of the website and of the application to it.
-- 💼 **Commercial license**: if you cannot meet these obligations, ORBii SAS can grant a separate license: **info@orbii.tech**
+**Commercial license**
+Organizations that need proprietary integrations, modifications they do not wish to share, OEM redistribution or other licensing terms can request a commercial license from ORBii SAS.
 
-**Hosted service.** The license covers the software. Using the service operated by ORBii SAS at interact.orbii.tech is governed by its [terms of use](https://interact.orbii.tech/terms).
+Commercial support, managed hosting and enterprise services may be offered under separate agreements.
 
-**Trademarks.** No rights are granted under trademark law for the ORBii name and logo (AGPL section 7(e)). You may not use them to brand, endorse or promote your own products or services without prior written permission.
+Licensing inquiries: [info@orbii.tech](mailto:info@orbii.tech) · [orbii.tech](https://orbii.tech)
 
-**Earlier versions.** Versions published before this change of license (including the releases up to v2.8.0) were distributed under the PolyForm Noncommercial License 1.0.0, which continues to apply to copies obtained under it.
+**Hosted service.** Use of interact.orbii.tech is governed by its [terms of use](https://interact.orbii.tech/terms).
+
+**Trademarks.** No trademark rights are granted for the ORBii name and logo (AGPL section 7(e)). You may not use them to brand, endorse or promote your own products or services without prior written permission.
+
+**Earlier versions.** Versions published before the change to AGPL, including releases up to v2.8.0, were distributed under the PolyForm Noncommercial License 1.0.0, which continues to apply to copies obtained under it.
+
+Copyright © 2026 ORBii SAS.
