@@ -134,6 +134,7 @@ let stream = null;
 const appPath = () => location.pathname.startsWith(BASE) ? location.pathname.slice(BASE.length) || '/' : location.pathname;
 function route() {
   if (stream) { stream.close(); stream = null; }
+  if (appPath() !== '/') Site.leave();
   document.body.classList.remove('screen', 'report', 'host-mode', 'admin-mode');
   const p = appPath().split('/').filter(Boolean);
   if (p[0] === 'e' && p[1]) {
@@ -151,7 +152,7 @@ window.addEventListener('popstate', route);
 const link = (path, label, attrs = {}) => h('a', { href: BASE + path, onclick: e => { if (attrs.target) return; e.preventDefault(); go(path); }, ...attrs }, label);
 
 // ---------- Home ----------
-let homeTimer = null;
+let homeTimer = null, homeKey = null;
 function home() {
   document.title = 'Meetup Q&A';
   clearInterval(homeTimer);
@@ -215,34 +216,6 @@ function home() {
     return h('section', { class: 'find' },
       h('div', { class: 'find-head' }, h('h2', {}, '🔎 ' + t('find.title')), h('span', { class: 'find-count' }, count())),
       search, rows());
-  }
-
-  function landing() {
-    const code = h('input', { type: 'text', 'data-keep': 'lcode', placeholder: t('home.codePh'), maxlength: 5, 'aria-label': t('home.codeLabel'), autocapitalize: 'characters', autocomplete: 'off' });
-    const demos = INFO.demos || [];
-    const requestHref = `mailto:info@orbii.tech?subject=${encodeURIComponent(t('land.mailSubject'))}&body=${encodeURIComponent(t('land.mailBody'))}`;
-    const card = (cls, icon, title, text, actions) => h('article', { class: `land-card ${cls}` }, h('div', { class: 'land-ic', 'aria-hidden': 'true' }, icon), h('h3', {}, title), h('p', {}, text), h('div', { class: 'land-act' }, actions));
-    return h('section', { class: 'landing' },
-      h('div', { class: 'land-hero' },
-        h('div', { class: 'land-copy' },
-          h('span', { class: 'land-kicker' }, '✨ ' + t('land.kicker')),
-          h('h1', {}, 'Meetup ', h('span', {}, 'Q&A')), h('p', { class: 'land-tag' }, t('land.tagline')),
-          h('form', { class: 'land-join', onsubmit: e => { e.preventDefault(); if (code.value.trim()) go('/e/' + code.value.trim().toUpperCase()); } },
-            code, h('button', { class: 'btn' }, t('land.join') + ' →')),
-          h('ul', { class: 'land-feats' }, ['💬 ' + t('land.f1'), '📊 ' + t('land.f2'), '📈 ' + t('land.f3'), '🗓 ' + t('land.f4')].map(x => h('li', {}, x)))),
-        findSpace()),
-      h('div', { class: 'land-cards' },
-        demos.length > 0 && card('c-demo', '🎭', t('land.demoT'), t('land.demoP'), [
-          demos.map(dm => h('div', { class: 'land-demo' }, h('b', {}, dm.title),
-            h('div', { class: 'land-act' }, h('a', { class: 'btn primary small', href: dm.url + '/host' }, '🎛 ' + t('land.demoHost')), h('a', { class: 'btn small', href: dm.url }, '👥 ' + t('land.demoGuest'))))),
-          h('div', { class: 'muted land-pw' }, t('land.demoPw'), ' ', h('code', {}, 'demo20272028'))]),
-        card('c-oss', '⭐', t('land.ossT'), t('land.ossP'), [
-          h('a', { class: 'btn small', href: 'https://github.com/pejmang/Meetup-Q-A', target: '_blank', rel: 'noopener' }, t('land.ossBtn')),
-          h('div', { class: 'muted' }, 'PolyForm Noncommercial 1.0.0')]),
-        card('c-space', '✨', t('land.spaceT'), t('land.spaceP'), [
-          INFO.googleClientId ? [h('button', { class: 'btn primary small', onclick: () => go('/register') }, t('reg.cta')), link('/my', '🗂 ' + t('my.title'), { class: 'btn small' })]
-            : h('a', { class: 'btn primary small', href: requestHref }, t('land.request')),
-          h('div', { class: 'muted' }, t('land.spaceNote'))])));
   }
 
   function draw() {
@@ -329,8 +302,16 @@ function home() {
         } }, scenario === 'townhall' ? '🏢 Townhall · 1,200' : (l === 'en' ? '🇬🇧 English' : '🇫🇷 Français') + (days > 1 ? ' · ' + t('demo.days', { n: days }) : '')))));
 
     document.body.classList.toggle('admin-mode', st.admin);
+    // Visitors see the public website; the admin keeps the management screen
+    if (!st.admin && !(token() && !st.loaded)) {
+      const site = Site.render({ findSpace, signIn: () => { st.login = true; draw(); document.querySelector(st.loginMode === 'host' && !st.hostCode ? '#lg-code' : '#lg-pw')?.focus(); } });
+      // the site node stays in place (typing and demo are kept); only the sign-in drawer is redrawn
+      if (site.parentNode === $app) { while (site.nextSibling) site.nextSibling.remove(); } else $app.replaceChildren(site);
+      if (login) $app.append(login);
+      return Site.sync();
+    }
     $app.replaceChildren(...[st.admin && h('div', { class: 'mode-banner admin' }, '🔐 ' + t('mode.admin'))].filter(Boolean), h('div', { class: `wrap ${st.admin ? 'narrow' : 'home-wide'}` }, top,
-      st.admin ? h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline'))) : landing(),
+      h('div', { class: 'hero' }, h('h1', {}, 'Meetup Q&A'), h('p', { class: 'muted' }, t('home.tagline'))),
       pwCard, create,
       st.admin && h('h2', {}, t('home.live', { n: liveEv.length })),
       st.admin && (liveEv.length ? h('div', { class: 'stack' }, liveEv.map(eventCard)) : h('p', { class: 'empty' }, st.loaded ? t('home.noLive') : t('common.loading'))),
@@ -339,7 +320,8 @@ function home() {
       st.admin && done.length > 0 && h('div', {}, h('h2', {}, t('home.endedList', { n: done.length })), h('div', { class: 'stack' }, done.map(eventCard))), brandFooter()), ...(login ? [login] : []));
   }
   const onKey = e => { if (!onHome()) return document.removeEventListener('keydown', onKey); if (e.key === 'Escape' && st.login) { st.login = false; draw(); } };
-  document.addEventListener('keydown', onKey);
+  document.removeEventListener('keydown', homeKey);   // home() runs again on each page of the website
+  document.addEventListener('keydown', homeKey = onKey);
   draw(); refresh(); infoReady.then(() => { if (onHome()) draw(); });
   if (st.login) setTimeout(() => document.querySelector(st.hostCode ? '#lg-pw' : '#lg-code')?.focus(), 80);
 }
