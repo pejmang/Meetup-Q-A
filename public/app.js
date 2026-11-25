@@ -1,9 +1,10 @@
 /*!
  * Meetup Q&A (ORBii Interact)
- * Copyright (c) 2026 ORBii SAS. All rights reserved.
- * Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE and NOTICE): free for any noncommercial use.
- * Commercial use requires a separate license from ORBii SAS: info@orbii.tech
- * https://polyformproject.org/licenses/noncommercial/1.0.0
+ * Copyright (c) 2026 ORBii SAS.
+ * SPDX-License-Identifier: AGPL-3.0-only
+ * Licensed under the GNU Affero General Public License v3.0 (see LICENSE and NOTICE).
+ * A separate commercial license is available from ORBii SAS: info@orbii.tech
+ * https://www.gnu.org/licenses/agpl-3.0.html
  */
 
 // Meetup Q&A v2 — client (vanilla JS, no dependencies)
@@ -60,7 +61,8 @@ const copyrightYears = () => { const y = new Date().getFullYear(); return y > CO
 const brandFooter = () => h('footer', { class: 'brand-foot' },
   h('span', {}, `© ${copyrightYears()} ORBii SAS`), h('span', { 'aria-hidden': 'true' }, ' · '),
   h('a', { href: 'https://orbii.tech', target: '_blank', rel: 'noopener' }, 'Powered by ', h('b', {}, 'ORBii'), ', ', h('span', { class: 'nowrap' }, 'Smart Tools for a Connected World')),
-  h('span', { 'aria-hidden': 'true' }, ' · '), h('a', { href: BASE + '/terms', onclick: e => { e.preventDefault(); go('/terms'); } }, t('reg.termsLink')));
+  h('span', { 'aria-hidden': 'true' }, ' · '), h('a', { href: BASE + '/terms', onclick: e => { e.preventDefault(); go('/terms'); } }, t('reg.termsLink')),
+  h('span', { 'aria-hidden': 'true' }, ' · '), h('a', { href: 'https://github.com/pejmang/Meetup-Q-A', target: '_blank', rel: 'noopener' }, 'Source (AGPL-3.0)'));
 // ----- Modal dialog (replaces browser alert() popups) -----
 function openModal(content, { label } = {}) {
   const prev = document.activeElement;

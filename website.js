@@ -1,9 +1,10 @@
 /*!
  * Meetup Q&A (ORBii Interact)
- * Copyright (c) 2026 ORBii SAS. All rights reserved.
- * Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE and NOTICE): free for any noncommercial use.
- * Commercial use requires a separate license from ORBii SAS: info@orbii.tech
- * https://polyformproject.org/licenses/noncommercial/1.0.0
+ * Copyright (c) 2026 ORBii SAS.
+ * SPDX-License-Identifier: AGPL-3.0-only
+ * Licensed under the GNU Affero General Public License v3.0 (see LICENSE and NOTICE).
+ * A separate commercial license is available from ORBii SAS: info@orbii.tech
+ * https://www.gnu.org/licenses/agpl-3.0.html
  */
 
 // Public website: complete HTML pages rendered by the server (readable without JavaScript by search engines
@@ -26,7 +27,7 @@ const META = {
     features: ['Fonctionnalités : Q&A, sondages, modération — ORBii Interact', 'Questions et votes, sondages et réactions, modération, projection et statistiques : les fonctionnalités d’ORBii Interact avant, pendant et après votre événement.'],
     'use-cases': ['Cas d’usage : town halls, meetups, conférences — ORBii Interact', 'Town halls, communication interne, conférences, ateliers, meetups et formations : comment engager vos participants avec ORBii Interact.'],
     demo: ['Démo interactive — ORBii Interact', 'Essayez ORBii Interact : démo en ligne avec agenda, questions, sondages et statistiques, en vue animateur ou participant.'],
-    'open-source': ['Community & Open Source — ORBii Interact', 'Le code d’ORBii Interact est public sur GitHub (licence PolyForm Noncommercial) : consultation, auto-hébergement non commercial et projet d’édition communautaire.'],
+    'open-source': ['Community & Open Source — ORBii Interact', 'Le code d’ORBii Interact est open source sur GitHub (licence AGPL-3.0) : consultation, auto-hébergement et projet d’édition communautaire.'],
     offers: ['Offres & déploiement — ORBii Interact', 'Les parcours ORBii Interact : produit en ligne, auto-hébergement, formules commerciales en préparation et besoins des entreprises.']
   },
   en: {
@@ -34,7 +35,7 @@ const META = {
     features: ['Features: Q&A, polls, moderation — ORBii Interact', 'Questions and voting, polls and reactions, moderation, big screen and analytics: ORBii Interact features before, during and after your event.'],
     'use-cases': ['Use cases: town halls, meetups, conferences — ORBii Interact', 'Town halls, internal communications, conferences, workshops, meetups and training: how to engage participants with ORBii Interact.'],
     demo: ['Interactive demo — ORBii Interact', 'Try ORBii Interact: a live demo with agenda, questions, polls and analytics, as host or participant.'],
-    'open-source': ['Community & Open Source — ORBii Interact', 'ORBii Interact code is public on GitHub (PolyForm Noncommercial licence): read it, self-host it for noncommercial use, and follow the community edition project.'],
+    'open-source': ['Community & Open Source — ORBii Interact', 'ORBii Interact is open source on GitHub (AGPL-3.0 licence): read the code, self-host it, and follow the community edition project.'],
     offers: ['Plans & deployment — ORBii Interact', 'ORBii Interact paths: online product, self-hosting, commercial plans in preparation and company needs.']
   }
 };
@@ -71,7 +72,7 @@ function liveDemos(lang, ctx) {
 function jsonLd(lang, url, home) {
   return JSON.stringify({ '@context': 'https://schema.org', '@graph': [
     { '@type': 'Organization', '@id': 'https://orbii.tech/#org', name: 'ORBii SAS', url: 'https://orbii.tech', email: 'info@orbii.tech' },
-    { '@type': 'SoftwareApplication', name: 'ORBii Interact', url: home, description: META[lang].home[1], applicationCategory: 'BusinessApplication', operatingSystem: 'Web', inLanguage: ['fr', 'en'], publisher: { '@id': 'https://orbii.tech/#org' }, license: 'https://polyformproject.org/licenses/noncommercial/1.0.0', sameAs: [REPO] },
+    { '@type': 'SoftwareApplication', name: 'ORBii Interact', url: home, description: META[lang].home[1], applicationCategory: 'BusinessApplication', operatingSystem: 'Web', inLanguage: ['fr', 'en'], publisher: { '@id': 'https://orbii.tech/#org' }, license: 'https://www.gnu.org/licenses/agpl-3.0.html', sameAs: [REPO] },
     { '@type': 'WebPage', url, name: META[lang].home[0], inLanguage: lang }
   ] }).replace(/</g, '\\u003c');
 }
@@ -95,10 +96,11 @@ function page(req, ctx, lang, name) {
   return `<!doctype html>
 <!--
   Meetup Q&A (ORBii Interact)
-  Copyright (c) 2026 ORBii SAS. All rights reserved.
-  Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE and NOTICE): free for any noncommercial use.
-  Commercial use requires a separate license from ORBii SAS: info@orbii.tech
-  https://polyformproject.org/licenses/noncommercial/1.0.0
+  Copyright (c) 2026 ORBii SAS.
+  SPDX-License-Identifier: AGPL-3.0-only
+  Licensed under the GNU Affero General Public License v3.0 (see LICENSE and NOTICE).
+  A separate commercial license is available from ORBii SAS: info@orbii.tech
+  https://www.gnu.org/licenses/agpl-3.0.html
 -->
 <html lang="${lang}">
 <head>

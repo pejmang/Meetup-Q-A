@@ -1,9 +1,10 @@
 /*!
  * Meetup Q&A (ORBii Interact)
- * Copyright (c) 2026 ORBii SAS. All rights reserved.
- * Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE and NOTICE): free for any noncommercial use.
- * Commercial use requires a separate license from ORBii SAS: info@orbii.tech
- * https://polyformproject.org/licenses/noncommercial/1.0.0
+ * Copyright (c) 2026 ORBii SAS.
+ * SPDX-License-Identifier: AGPL-3.0-only
+ * Licensed under the GNU Affero General Public License v3.0 (see LICENSE and NOTICE).
+ * A separate commercial license is available from ORBii SAS: info@orbii.tech
+ * https://www.gnu.org/licenses/agpl-3.0.html
  */
 
 // Meetup Q&A v2 — translations (English / French)
@@ -25,7 +26,7 @@ window.I18N = {
     'land.f1': 'Live Q&A with upvotes', 'land.f2': '6 poll formats & NPS', 'land.f3': 'Live audience analytics', 'land.f4': 'Agenda & sessions',
     'land.demoT': 'Try the live demo', 'land.demoP': 'Simulated events with agenda, questions, polls and live analytics — try everything.',
     'land.demoHost': 'Host view', 'land.demoGuest': 'Participant view', 'land.demoPw': 'Host password:',
-    'land.ossT': 'Open source', 'land.ossP': 'Zero-dependency Node.js app you can self-host. Free for noncommercial use.', 'land.ossBtn': 'View on GitHub',
+    'land.ossT': 'Open source', 'land.ossP': 'Zero-dependency Node.js app you can self-host, under the AGPL-3.0 licence.', 'land.ossBtn': 'View on GitHub',
     'land.spaceT': 'Get your event space', 'land.spaceP': 'Create a space for your meetup in a minute with your Google account.',
     'land.request': 'Request a space', 'land.spaceNote': 'Free for noncommercial use.',
     'land.mailSubject': 'Request an event space — Meetup Q&A', 'land.mailBody': 'Hello,\n\nI would like an event space on Meetup Q&A.\n\nOrganisation:\nEvent name:\nDate:\nExpected participants:\n\nThank you!',
@@ -208,7 +209,7 @@ window.I18N = {
     'land.f1': 'Q&A en direct avec votes', 'land.f2': '6 formats de sondage & NPS', 'land.f3': 'Analytics d\'audience en direct', 'land.f4': 'Agenda & sessions',
     'land.demoT': 'Tester la démo', 'land.demoP': 'Des événements simulés avec agenda, questions, sondages et analytics en direct — testez tout.',
     'land.demoHost': 'Vue animateur', 'land.demoGuest': 'Vue participant', 'land.demoPw': 'Mot de passe animateur :',
-    'land.ossT': 'Open source', 'land.ossP': 'Application Node.js sans dépendance, à héberger vous-même. Gratuite pour un usage non commercial.', 'land.ossBtn': 'Voir sur GitHub',
+    'land.ossT': 'Open source', 'land.ossP': 'Application Node.js sans dépendance, à héberger vous-même, sous licence AGPL-3.0.', 'land.ossBtn': 'Voir sur GitHub',
     'land.spaceT': 'Obtenir votre espace', 'land.spaceP': 'Créez l\'espace de votre meetup en une minute avec votre compte Google.',
     'land.request': 'Demander un espace', 'land.spaceNote': 'Gratuit pour un usage non commercial.',
     'land.mailSubject': 'Demande d\'espace événement — Meetup Q&A', 'land.mailBody': 'Bonjour,\n\nJe souhaite un espace événement sur Meetup Q&A.\n\nOrganisation :\nNom de l\'événement :\nDate :\nNombre de participants attendus :\n\nMerci !',
