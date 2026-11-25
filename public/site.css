@@ -379,3 +379,4 @@ html:has(.mk){scroll-behavior:smooth}
 :where(.mk) .mk-tablewrap{overflow-x:auto}
 :where(.mk) .mk-legal table{border-collapse:collapse;width:100%;min-width:460px;font-size:13px}
 :where(.mk) .mk-legal th,:where(.mk) .mk-legal td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+@media(max-width:600px){:where(.mk) .mk-legal table{min-width:0;font-size:12px}:where(.mk) .mk-legal th,:where(.mk) .mk-legal td{padding:6px}}
