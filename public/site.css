@@ -244,7 +244,7 @@ html:has(.mk){scroll-behavior:smooth}
 :where(.mk) .mk-modalbox{max-height:calc(100vh - 40px);overflow-y:auto}
 :where(.mk) .mk-modalbox .find{margin-top:18px;box-shadow:none}
 .mk .find h2{font-size:17px;letter-spacing:0;margin:0}
-:where(.mk) .mk-livedemos{margin-top:30px;border:1px solid var(--line);border-radius:var(--r);background:white;padding:24px}
+:where(.mk) .mk-livedemos{margin-bottom:30px;border:1px solid var(--line);border-radius:var(--r);background:white;padding:24px}
 :where(.mk) .mk-livedemos h3{margin:0 0 4px;font-size:20px}
 :where(.mk) .mk-livedemos p{margin:0 0 14px;color:var(--muted)}
 :where(.mk) .mk-livedemo{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--line)}
