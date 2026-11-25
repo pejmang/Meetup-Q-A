@@ -1,8 +1,8 @@
 # Meetup Q&A
 
-[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-7b5cd6)](https://polyformproject.org/licenses/noncommercial/1.0.0) [![CI](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml/badge.svg)](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml) [![Live demo](https://img.shields.io/badge/live%20demo-try%20it-c8a24a)](https://interact.orbii.tech/en/demo)
+[![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-7b5cd6)](LICENSE) [![CI](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml/badge.svg)](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml) [![Live demo](https://img.shields.io/badge/live%20demo-try%20it-c8a24a)](https://interact.orbii.tech/en/demo)
 
-**Free for noncommercial use. For commercial use, contact us: [info@orbii.tech](mailto:info@orbii.tech)**
+**Open source under the [GNU AGPL v3.0](LICENSE). Commercial license available: [info@orbii.tech](mailto:info@orbii.tech)**
 
 **Website: [ORBii Interact](https://interact.orbii.tech/en)** (English) · [en français](https://interact.orbii.tech/)
 
@@ -112,17 +112,17 @@ Put a reverse proxy in front (see `nginx.conf.example`). Important: `proxy_buffe
 
 ## License
 
-Copyright © 2026 **ORBii SAS**. All rights reserved.
+Copyright © 2026 **ORBii SAS**.
 
-**Free for noncommercial use. For commercial use, contact us: [info@orbii.tech](mailto:info@orbii.tech)**
+This program is free software, released under the **[GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.html)** only (`AGPL-3.0-only`, see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE)). It comes **without any warranty**. In short (the license text prevails):
 
-This software is released under the **[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)** (see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE)):
+- ✅ **You may use, study, modify and share it for any purpose, including commercially.**
+- 🔁 If you distribute it, modified or not, you must do so under the same license, with the source code and the copyright notices.
+- 🌐 If you **modify it and let users interact with it over a network** (hosted or SaaS use), you must offer those users the source code of your version (section 13). Point the "source code" links of the website and of the application to it.
+- 💼 **Commercial license**: if you cannot meet these obligations, ORBii SAS can grant a separate license: **info@orbii.tech**
 
-- ✅ **Free for any noncommercial use**: personal use, research, education, nonprofits, public institutions, community meetups. You may use, modify and share it, keeping the copyright notice.
-- 💼 **Commercial use** (selling it, including it in a paid offer, using it to generate revenue) **requires a separate license from ORBii SAS**: **info@orbii.tech**
+**Hosted service.** The license covers the software. Using the service operated by ORBii SAS at interact.orbii.tech is governed by its [terms of use](https://interact.orbii.tech/terms).
 
-**Trademarks.** The ORBii name and logo are not licensed under the PolyForm Noncommercial License or any other license. All rights reserved by ORBii SAS. You may not use them to brand, endorse or promote your own products or services without prior written permission.
+**Trademarks.** No rights are granted under trademark law for the ORBii name and logo (AGPL section 7(e)). You may not use them to brand, endorse or promote your own products or services without prior written permission.
 
-GitHub shows the license as "Other" because PolyForm is not in its built-in license list; the terms are the official PolyForm Noncommercial 1.0.0 text.
-
-Note: this is a *source-available* license. It does not meet the OSI "open source" definition, because that definition does not allow restricting commercial use.
+**Earlier versions.** Versions published before this change of license (including the releases up to v2.8.0) were distributed under the PolyForm Noncommercial License 1.0.0, which continues to apply to copies obtained under it.

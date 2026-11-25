@@ -1,9 +1,10 @@
 /*!
  * Meetup Q&A (ORBii Interact)
- * Copyright (c) 2026 ORBii SAS. All rights reserved.
- * Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE and NOTICE): free for any noncommercial use.
- * Commercial use requires a separate license from ORBii SAS: info@orbii.tech
- * https://polyformproject.org/licenses/noncommercial/1.0.0
+ * Copyright (c) 2026 ORBii SAS.
+ * SPDX-License-Identifier: AGPL-3.0-only
+ * Licensed under the GNU Affero General Public License v3.0 (see LICENSE and NOTICE).
+ * A separate commercial license is available from ORBii SAS: info@orbii.tech
+ * https://www.gnu.org/licenses/agpl-3.0.html
  */
 .mk{--bg:#faf9f5;--card:#fff;--brand:#142640;--brand-ink:#fff;--navy:#142640;--ink:#172a43;--muted:#627187;--gold:#f4c96e;--cream:#faf9f5;--line:#e4e7ea;--white:#fff;--teal:#167c69;--shadow:0 18px 65px #172a4315;--r:20px}
 .mk *{box-sizing:border-box}

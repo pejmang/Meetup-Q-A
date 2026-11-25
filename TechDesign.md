@@ -1,7 +1,7 @@
 # Meetup Q&A — Technical Design
 
-Copyright 2026 ORBii SAS · PolyForm Noncommercial 1.0.0 (see `LICENSE` and `NOTICE`).
-Free for noncommercial use. For commercial use, contact us: info@orbii.tech
+Copyright 2026 ORBii SAS · GNU AGPL v3.0 only (see `LICENSE` and `NOTICE`).
+A separate commercial license is available from ORBii SAS: info@orbii.tech
 
 This document describes the software architecture of Meetup Q&A (ORBii Interact), how data and real-time updates flow, how it is deployed, and the measured capacity limits.
 

@@ -1,9 +1,10 @@
 /*!
  * Meetup Q&A (ORBii Interact)
- * Copyright (c) 2026 ORBii SAS. All rights reserved.
- * Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE and NOTICE): free for any noncommercial use.
- * Commercial use requires a separate license from ORBii SAS: info@orbii.tech
- * https://polyformproject.org/licenses/noncommercial/1.0.0
+ * Copyright (c) 2026 ORBii SAS.
+ * SPDX-License-Identifier: AGPL-3.0-only
+ * Licensed under the GNU Affero General Public License v3.0 (see LICENSE and NOTICE).
+ * A separate commercial license is available from ORBii SAS: info@orbii.tech
+ * https://www.gnu.org/licenses/agpl-3.0.html
  */
 
 // Meetup Q&A v2 — dependency-free server (Node >= 18). Real-time via Server-Sent Events.
@@ -34,7 +35,7 @@ const BACKUP_KEEP = Number(process.env.BACKUP_KEEP) || 14;                 // da
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';                // enables self-service registration
 const MAX_SPACES_PER_EMAIL = Number(process.env.MAX_SPACES_PER_EMAIL) || 3;  // active (not ended) spaces per organiser
 const REQUIRE_PRO_EMAIL = process.env.REQUIRE_PRO_EMAIL === '1';           // off by default: any verified Google account can register
-const TERMS_VERSION = '2026-11-24';
+const TERMS_VERSION = '2026-11-25';
 // Demos shown on the home page: PUBLIC_DEMOS="Title|https://…/e/CODE;Title|https://…/e/CODE" (or a single PUBLIC_DEMO_URL)
 const PUBLIC_DEMOS = String(process.env.PUBLIC_DEMOS || '').split(';').map(x => x.split('|').map(y => y.trim())).filter(([t, u]) => t && /^https?:\/\//.test(u || '')).map(([title, url]) => ({ title, url }));
 if (!PUBLIC_DEMOS.length && process.env.PUBLIC_DEMO_URL) PUBLIC_DEMOS.push({ title: 'Demo', url: process.env.PUBLIC_DEMO_URL });
