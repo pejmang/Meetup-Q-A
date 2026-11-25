@@ -1,8 +1,10 @@
 # Meetup Q&A
 
-[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-7b5cd6)](https://polyformproject.org/licenses/noncommercial/1.0.0) [![CI](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml/badge.svg)](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml) [![Live demo](https://img.shields.io/badge/live%20demo-try%20it-c8a24a)](https://interact.orbii.tech/v2.0/e/K4ARN/host)
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-7b5cd6)](https://polyformproject.org/licenses/noncommercial/1.0.0) [![CI](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml/badge.svg)](https://github.com/pejmang/Meetup-Q-A/actions/workflows/ci.yml) [![Live demo](https://img.shields.io/badge/live%20demo-try%20it-c8a24a)](https://interact.orbii.tech/en/demo)
 
 **Free for noncommercial use. For commercial use, contact us: [info@orbii.tech](mailto:info@orbii.tech)**
+
+**Website: [ORBii Interact](https://interact.orbii.tech/en)** (English) · [en français](https://interact.orbii.tech/)
 
 ## Live demo
 
