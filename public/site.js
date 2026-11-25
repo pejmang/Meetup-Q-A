@@ -24,7 +24,7 @@ const Site = (() => {
     'Veuillez renseigner ce champ.': 'Please fill in this field.'
   };
   // addresses used by the previous single-page version (#demo/poll…)
-  const OLD = { accueil: '/', fonctionnalites: '/fonctionnalites', 'cas-usage': '/cas-usage', demo: '/demo' };
+  const OLD = { accueil: '/', fonctionnalites: '/fonctionnalites', 'cas-usage': '/cas-usage', demo: '/demo', 'open-source': '/open-source', offres: '/offres' };
   const OPTS = ['Stratégie', 'Organisation', 'Compétences'];
 
   const pageRoot = document.querySelector('#app > .mk');
@@ -137,7 +137,7 @@ const Site = (() => {
     if (!root) {
       root = pageRoot;
       const [name, anchor] = location.hash.slice(1).split('/');
-      if (OLD[name]) location.replace(BASE + (lang === 'en' ? { accueil: '/en', fonctionnalites: '/en/features', 'cas-usage': '/en/use-cases', demo: '/en/demo' }[name] : OLD[name]) + (anchor ? '#' + anchor : ''));
+      if (OLD[name]) location.replace(BASE + (lang === 'en' ? { accueil: '/en', fonctionnalites: '/en/features', 'cas-usage': '/en/use-cases', demo: '/en/demo', 'open-source': '/en/open-source', offres: '/en/offers' }[name] : OLD[name]) + (anchor ? '#' + anchor : ''));
       bind();
     }
     return root;

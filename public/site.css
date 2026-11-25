@@ -306,6 +306,42 @@ html:has(.mk){scroll-behavior:smooth}
 :where(.mk) .mk-lifecycle{padding:24px 0 32px}
 :where(.mk) .mk-pvstats small{font-size:9px}
 }
+:where(.mk) .mk-ecosystem{background:#142640;color:white;font-size:12px}
+:where(.mk) .mk-ecosystem .mk-wrap{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-top:8px;padding-bottom:8px}
+:where(.mk) .mk-ecosystem a{color:#fff;text-decoration:none}
+:where(.mk) .mk-ecosystem a:last-child{color:#f4c96e}
+:where(.mk) .mk-ecosystem span{opacity:.65}
+:where(.mk) .mk-offergrid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+:where(.mk) .mk-offer{padding:30px;display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+:where(.mk) .mk-offer h3{font-size:30px;letter-spacing:-1px;margin:0}
+:where(.mk) .mk-offer p{margin:0 0 12px}
+:where(.mk) .mk-offer small{color:var(--muted)}
+:where(.mk) .mk-notice{padding:22px;border:1px solid var(--line);border-left:4px solid var(--teal);background:white;border-radius:12px;margin:28px 0}
+:where(.mk) .mk-notice p{margin:8px 0 0}
+:where(.mk) .mk-hero .mk-btnrow{align-items:center}
+:where(.mk) .mk-hero .mk-btnrow .mk-textlink{font-size:13px;color:var(--teal)}
+:where(.mk) .mk-footergrid{grid-template-columns:1.4fr repeat(4,1fr)}
+:where(.mk) .mk-navlinks{gap:14px!important}
+:where(.mk) .mk-navlinks a{font-size:13px!important}
+:where(.mk) .mk-nav .mk-actions{gap:7px}
+:where(.mk) .mk-nav .mk-actions .mk-btn{font-size:12px;padding:9px 12px}
+@media(max-width:1050px){
+:where(.mk) .mk-navlinks{gap:9px!important}
+:where(.mk) .mk-navlinks a{font-size:12px!important}
+}
+@media(max-width:850px){
+:where(.mk) .mk-navlinks{display:none!important}
+:where(.mk) .mk-navlinks.mk-open{display:flex!important}
+:where(.mk) .mk-menu{display:inline-flex!important}
+}
+@media(max-width:740px){
+:where(.mk) .mk-offergrid{grid-template-columns:1fr}
+:where(.mk) .mk-ecosystem span{display:none}
+:where(.mk) .mk-ecosystem .mk-wrap{font-size:10px}
+:where(.mk) .mk-footergrid{grid-template-columns:1fr 1fr}
+:where(.mk) .mk-nav .mk-actions .mk-btn{font-size:11px;padding:8px}
+:where(.mk) .mk-nav .mk-actions .mk-ghost{display:none}
+}
 /* additions for the live site */
 :where(.mk) [hidden]{display:none!important}
 :where(.mk) h2{margin-top:0}
@@ -317,10 +353,17 @@ html:has(.mk){scroll-behavior:smooth}
 :where(.mk) .mk-footnote a:not(.mk-logo){display:inline;font-size:11px;margin:0;text-decoration:underline}
 :where(.mk) .mk-modalbox{max-height:calc(100vh - 40px);overflow-y:auto}
 :where(.mk) .mk-modalbox .find{margin-top:18px;box-shadow:none}
+/* buttons inside cards keep their own colours (the card link rule of the mock-up made them unreadable) */
+.mk .mk-card a.mk-btn{margin-top:0;padding:12px 18px;font-size:14px}
+.mk .mk-card a.mk-btn.mk-dark{color:#fff}
+.mk .mk-card a.mk-btn.mk-outline{color:var(--ink)}
 .mk .find h2{font-size:17px;letter-spacing:0;margin:0}
 :where(.mk) .mk-livedemos{margin-bottom:30px;border:1px solid var(--line);border-radius:var(--r);background:white;padding:24px}
 :where(.mk) .mk-livedemos .mk-livetitle{margin:0 0 4px;font-size:20px;letter-spacing:0;line-height:1.4}
 :where(.mk) .mk-livedemos p{margin:0 0 14px;color:var(--muted)}
 :where(.mk) .mk-livedemo{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--line)}
-@media(max-width:1000px){:where(.mk) .mk-actions .mk-ghost{display:inline-flex}}
+/* participants must always reach "Join"; the longer menu folds earlier than in the mock-up */
+.mk .mk-nav .mk-actions .mk-ghost{display:inline-flex}
+@media(max-width:1200px){.mk .mk-navlinks{display:none!important;position:absolute;top:100%;left:0;right:0;padding:20px;background:var(--cream);border-bottom:1px solid var(--line);flex-direction:column;align-items:flex-start}.mk .mk-navlinks.mk-open{display:flex!important}.mk .mk-nav .mk-actions .mk-menu{display:inline-flex!important}}
+@media(max-width:520px){.mk .mk-nav .mk-actions .mk-primary{display:none}}
 @media(max-width:480px){:where(.mk) .mk-wrap{padding:0 14px}:where(.mk) .mk-nav .mk-wrap{gap:6px}:where(.mk) .mk-logo,:where(.mk) .mk-logo small{font-size:17px}:where(.mk) .mk-mark{display:none}:where(.mk) .mk-nav .mk-logo small{display:none}:where(.mk) .mk-actions .mk-btn.mk-menu{padding:8px 10px}:where(.mk) .mk-actions{gap:5px;flex-wrap:nowrap}:where(.mk) .mk-actions .mk-btn{padding:8px 9px;font-size:12px}:where(.mk) .mk-actions .mk-primary span{display:none}}

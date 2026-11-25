@@ -13,10 +13,10 @@ const fs = require('fs');
 const path = require('path');
 const DIR = path.join(__dirname, 'website');
 const REPO = 'https://github.com/pejmang/Meetup-Q-A';
-const NAV = { home: 'accueil', features: 'fonctionnalites', 'use-cases': 'cas-usage', demo: 'demo' };
+const NAV = { home: 'accueil', features: 'fonctionnalites', 'use-cases': 'cas-usage', demo: 'demo', 'open-source': 'open-source', offers: 'offres' };
 const ROUTES = {
-  fr: { home: '/', features: '/fonctionnalites', 'use-cases': '/cas-usage', demo: '/demo' },
-  en: { home: '/en', features: '/en/features', 'use-cases': '/en/use-cases', demo: '/en/demo' }
+  fr: { home: '/', features: '/fonctionnalites', 'use-cases': '/cas-usage', demo: '/demo', 'open-source': '/open-source', offers: '/offres' },
+  en: { home: '/en', features: '/en/features', 'use-cases': '/en/use-cases', demo: '/en/demo', 'open-source': '/en/open-source', offers: '/en/offers' }
 };
 const BY_PATH = new Map(Object.entries(ROUTES).flatMap(([lang, pages]) => Object.entries(pages).map(([page, p]) => [p, { lang, page }])));
 
@@ -25,13 +25,17 @@ const META = {
     home: ['ORBii Interact — Engage your audience. Unlock collective intelligence.', 'Q&A en direct, votes, sondages, modération et statistiques pour vos réunions, conférences et événements : préparez, animez et suivez les échanges avec ORBii Interact.'],
     features: ['Fonctionnalités : Q&A, sondages, modération — ORBii Interact', 'Questions et votes, sondages et réactions, modération, projection et statistiques : les fonctionnalités d’ORBii Interact avant, pendant et après votre événement.'],
     'use-cases': ['Cas d’usage : town halls, meetups, conférences — ORBii Interact', 'Town halls, communication interne, conférences, ateliers, meetups et formations : comment engager vos participants avec ORBii Interact.'],
-    demo: ['Démo interactive — ORBii Interact', 'Essayez ORBii Interact : démo en ligne avec agenda, questions, sondages et statistiques, en vue animateur ou participant.']
+    demo: ['Démo interactive — ORBii Interact', 'Essayez ORBii Interact : démo en ligne avec agenda, questions, sondages et statistiques, en vue animateur ou participant.'],
+    'open-source': ['Community & Open Source — ORBii Interact', 'Le code d’ORBii Interact est public sur GitHub (licence PolyForm Noncommercial) : consultation, auto-hébergement non commercial et projet d’édition communautaire.'],
+    offers: ['Offres & déploiement — ORBii Interact', 'Les parcours ORBii Interact : produit en ligne, auto-hébergement, formules commerciales en préparation et besoins des entreprises.']
   },
   en: {
     home: ['ORBii Interact — Engage your audience. Unlock collective intelligence.', 'Live Q&A, voting, polls, moderation and analytics for meetings, conferences and events: prepare, run and follow up on discussions with ORBii Interact.'],
     features: ['Features: Q&A, polls, moderation — ORBii Interact', 'Questions and voting, polls and reactions, moderation, big screen and analytics: ORBii Interact features before, during and after your event.'],
     'use-cases': ['Use cases: town halls, meetups, conferences — ORBii Interact', 'Town halls, internal communications, conferences, workshops, meetups and training: how to engage participants with ORBii Interact.'],
-    demo: ['Interactive demo — ORBii Interact', 'Try ORBii Interact: a live demo with agenda, questions, polls and analytics, as host or participant.']
+    demo: ['Interactive demo — ORBii Interact', 'Try ORBii Interact: a live demo with agenda, questions, polls and analytics, as host or participant.'],
+    'open-source': ['Community & Open Source — ORBii Interact', 'ORBii Interact code is public on GitHub (PolyForm Noncommercial licence): read it, self-host it for noncommercial use, and follow the community edition project.'],
+    offers: ['Plans & deployment — ORBii Interact', 'ORBii Interact paths: online product, self-hosting, commercial plans in preparation and company needs.']
   }
 };
 const TEXT = {
@@ -123,7 +127,7 @@ ${ctx.noindex ? '<meta name="robots" content="noindex">\n' : ''}<link rel="canon
 <meta name="copyright" content="© ${ctx.years} ORBii SAS">
 <link rel="stylesheet" href="${B}/style.css">
 <link rel="stylesheet" href="${B}/site.css">
-<noscript><style>.mk .mk-navlinks{display:flex;flex-wrap:wrap;position:static}.mk .mk-menu{display:none}.mk .mk-nav,.mk .mk-nav .mk-wrap{position:static;height:auto;flex-wrap:wrap}</style></noscript>
+<noscript><style>.mk .mk-navlinks{display:flex!important;flex-direction:row!important;flex-wrap:wrap;position:static!important}.mk .mk-nav .mk-actions .mk-menu{display:none!important}.mk .mk-nav,.mk .mk-nav .mk-wrap{position:static;height:auto;flex-wrap:wrap}</style></noscript>
 </head>
 <body>
 <div id="app"><div class="mk" data-lang="${lang}">
