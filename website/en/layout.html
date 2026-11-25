@@ -1,0 +1,29 @@
+<a class="mk-skip" href="#main">Skip to content</a><header class="mk-nav"><div class="mk-wrap"><a aria-label="ORBii Interact home" class="mk-logo" href="{{url:home}}"><span class="mk-mark"><i></i><i></i><i></i><i></i></span>ORBii<small>interact</small></a><nav aria-label="Main navigation" class="mk-navlinks" id="navlinks"><a data-nav="accueil" href="{{url:home}}">Home</a><a data-nav="fonctionnalites" href="{{url:features}}">Features</a><a data-nav="cas-usage" href="{{url:use-cases}}">Use cases</a><a data-nav="demo" href="{{url:demo}}">Demo</a><button type="button" class="mk-navbtn" data-act="signin">Sign in</button></nav>
+<div class="mk-actions"><a class="mk-btn mk-outline mk-langsw" data-act="lang" href="{{otherUrl}}" hreflang="{{otherLang}}" lang="{{otherLang}}">{{otherLabel}}</a><button class="mk-btn mk-ghost" data-modal="join">Join</button><a class="mk-btn mk-primary" href="{{createHref}}">Create a session <span aria-hidden="true">↗</span></a><button aria-controls="navlinks" aria-expanded="false" aria-label="Menu" class="mk-btn mk-outline mk-menu" id="menu">☰</button></div>
+</div>
+</header>
+<main id="main">
+<div class="mk-page mk-active" data-page="{{page}}">
+{{content}}
+</div>
+</main><footer class="mk-footer"><div class="mk-wrap"><div class="mk-footergrid"><div><a class="mk-logo" href="{{url:home}}"><span class="mk-mark"><i></i><i></i><i></i><i></i></span>ORBii<small>interact</small></a><p>Engage your audience. Unlock collective intelligence.</p>
+<p class="mk-footSignature" lang="en">Prepare. Interact. Extend.</p>
+</div>
+<div><h4>Product</h4>
+<a href="{{url:features}}">Features</a><a href="{{url:demo}}">Demo</a><a href="https://github.com/pejmang/Meetup-Q-A" target="_blank" rel="noopener">Source code (GitHub)</a></div>
+<div><h4>Solutions</h4>
+<a href="{{url:use-cases}}">Use cases</a><a href="{{url:use-cases}}">Companies &amp; events</a></div>
+<div><h4>Take part</h4>
+<a href="{{url:demo}}">Try the demo</a><button type="button" class="mk-footbtn" data-modal="join">Join a session</button><a href="{{createHref}}">Create a session</a>{{mySpaces}}<button type="button" class="mk-footbtn" data-act="signin">Host / admin sign-in</button></div>
+</div>
+<div class="mk-footnote"><span>© {{years}} ORBii SAS · <a href="{{base}}/terms">Terms of use</a></span><a href="https://orbii.tech" target="_blank" rel="noopener">Powered by <b>ORBii</b>, Smart Tools for a Connected World</a></div>
+</div>
+</footer>
+<div class="mk-modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="mk-modalbox"><h2 id="modalTitle">Join a session</h2>
+<p>Enter the code shared by the organiser.</p>
+<form id="modalForm"><label for="modalField">Session code</label><input class="mk-field" id="modalField" required maxlength="5" placeholder="K7M2P" autocapitalize="characters" autocomplete="off"><div class="mk-alert" id="modalError" aria-live="polite"></div>
+<div class="mk-btnrow"><button type="button" class="mk-btn mk-outline" id="closeModal">Cancel</button><button class="mk-btn mk-dark" type="submit">Join →</button></div>
+</form>
+<div data-find></div>
+</div>
+</div>
