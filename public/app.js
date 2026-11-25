@@ -60,7 +60,8 @@ const copyrightYears = () => { const y = new Date().getFullYear(); return y > CO
 // Discreet brand signature, as most SaaS tools do ("Powered by …")
 const brandFooter = () => h('footer', { class: 'brand-foot' },
   h('span', {}, `© ${copyrightYears()} ORBii SAS`), h('span', { 'aria-hidden': 'true' }, ' · '),
-  h('a', { href: 'https://orbii.tech', target: '_blank', rel: 'noopener' }, 'Powered by ', h('b', {}, 'ORBii'), ', ', h('span', { class: 'nowrap' }, 'Smart Tools for a Connected World')),
+  h('a', { href: 'https://orbii.tech', target: '_blank', rel: 'noopener' }, 'Powered by ', h('b', {}, 'ORBii.Tech'), ', ', h('span', { class: 'nowrap' }, 'Smart Tools for a Connected World')),
+  h('span', { 'aria-hidden': 'true' }, ' · '), h('a', { class: 'brand-url nowrap', href: 'https://orbii.tech', target: '_blank', rel: 'noopener' }, 'https://orbii.tech'),
   h('span', { 'aria-hidden': 'true' }, ' · '), h('a', { href: BASE + '/terms', onclick: e => { e.preventDefault(); go('/terms'); } }, t('reg.termsLink')),
   h('span', { 'aria-hidden': 'true' }, ' · '), h('a', { href: 'https://github.com/pejmang/Meetup-Q-A', target: '_blank', rel: 'noopener' }, 'Source (AGPL-3.0)'));
 // ----- Modal dialog (replaces browser alert() popups) -----
@@ -1189,7 +1190,8 @@ function live(code, mode) {
         mainBlock),
       h('aside', {}, h('div', { class: 'join-box' }, h('div', { class: 'muted' }, t('screen.joinAt')), h('div', { style: 'font-weight:600;margin:6px 0;overflow-wrap:anywhere' }, joinUrl.replace(/^https?:\/\//, '')),
         qrEl(joinUrl), h('div', { class: 'muted' }, t('screen.code')), h('div', { class: 'c' }, d.code), h('div', { class: 'muted', style: 'margin-top:8px' }, '● ' + t('screen.online', { n: d.online })),
-        h('div', { class: 'screen-brand' }, 'Powered by ', h('b', {}, 'ORBii'), h('br'), h('span', {}, 'Smart Tools for a Connected World')))));
+        h('div', { class: 'screen-brand' }, 'Powered by ', h('b', {}, 'ORBii.Tech'), h('br'), h('span', {}, 'Smart Tools for a Connected World'),
+          h('a', { class: 'screen-url', href: 'https://orbii.tech', target: '_blank', rel: 'noopener' }, 'https://orbii.tech')))));
   }
 }
 
