@@ -22,7 +22,7 @@ const BY_PATH = new Map(Object.entries(ROUTES).flatMap(([lang, pages]) => Object
 
 const META = {
   fr: {
-    home: ['ORBii Interact — Engage your audience. Unlock collective intelligence.', 'Q&A en direct, votes, sondages, modération et statistiques pour vos réunions, conférences et événements : préparez, animez et suivez les échanges avec ORBii Interact.'],
+    home: ['ORBii Interact — Engagez votre audience. Révélez l’intelligence collective.', 'Q&A en direct, votes, sondages, modération et statistiques pour vos réunions, conférences et événements : préparez, animez et suivez les échanges avec ORBii Interact.'],
     features: ['Fonctionnalités : Q&A, sondages, modération — ORBii Interact', 'Questions et votes, sondages et réactions, modération, projection et statistiques : les fonctionnalités d’ORBii Interact avant, pendant et après votre événement.'],
     'use-cases': ['Cas d’usage : town halls, meetups, conférences — ORBii Interact', 'Town halls, communication interne, conférences, ateliers, meetups et formations : comment engager vos participants avec ORBii Interact.'],
     demo: ['Démo interactive — ORBii Interact', 'Essayez ORBii Interact : démo en ligne avec agenda, questions, sondages et statistiques, en vue animateur ou participant.'],

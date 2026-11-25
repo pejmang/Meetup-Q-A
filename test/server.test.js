@@ -421,7 +421,7 @@ test('base path: index is served with the base injected', async () => {
 
 test('website: complete HTML per page and language, readable without JavaScript', async () => {
   const at = p => fetch(`http://127.0.0.1:${PORT}/v2.0${p}`, { redirect: 'manual' });
-  for (const [p, lang, h1] of [['/', 'fr', 'Engage your audience.'], ['/fonctionnalites', 'fr', 'De la préparation au suivi'], ['/cas-usage', 'fr', 'Chaque audience'], ['/demo', 'fr', 'À vous de jouer.'],
+  for (const [p, lang, h1] of [['/', 'fr', 'Engagez votre audience.'], ['/fonctionnalites', 'fr', 'De la préparation au suivi'], ['/cas-usage', 'fr', 'Chaque audience'], ['/demo', 'fr', 'À vous de jouer.'],
     ['/open-source', 'fr', 'Open by design.'], ['/offres', 'fr', 'Votre événement. Votre choix.'], ['/en/open-source', 'en', 'Open by design.'], ['/en/offers', 'en', 'Your event. Your choice.'],
     ['/en', 'en', 'Engage your audience.'], ['/en/features', 'en', 'From preparation to follow-up'], ['/en/use-cases', 'en', 'Every audience'], ['/en/demo', 'en', 'Your turn.']]) {
     const r = await at(p), html = await r.text();
