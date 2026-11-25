@@ -713,3 +713,6 @@ body.screen .react { background: color-mix(in srgb, #fff 12%, var(--bg)); }
 .land-hero .find-code { font-size: .78rem; padding: 2px 8px; background: #0b2a5b; color: #fff; border: 0; }
 .land-hero .find-empty { color: #6a7088; font-size: .85rem; padding: 10px 0; }
 @media (max-width: 860px) { .land-hero .find { text-align: left; margin-top: 6px; } }
+/* ORBii.Tech address, visible on the free online service */
+.brand-foot .brand-url { text-decoration: underline; }
+.screen-brand .screen-url { display: block; margin-top: 6px; font-size: 1.25rem; font-weight: 700; color: var(--ink); text-decoration: none; }

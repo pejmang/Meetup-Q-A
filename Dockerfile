@@ -8,9 +8,8 @@
 FROM node:22-alpine
 WORKDIR /app
 COPY LICENSE NOTICE ./
-COPY package.json server.js demo.js register.js website.js ./
+COPY package.json server.js demo.js register.js ./
 COPY public ./public
-COPY website ./website
 ENV NODE_ENV=production PORT=3000 DATA_DIR=/data
 # /data must be writable by the unprivileged user, otherwise nothing is persisted
 RUN mkdir -p /data && chown node:node /data
